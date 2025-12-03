@@ -129,70 +129,111 @@ app.register_blueprint(api_blueprint, url_prefix='/api/v1')
 os.makedirs(app.config['DATA_DIR'], exist_ok=True)
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
-
-# ========== FINAL /api/chat ROUTE (Clean + Stable + Memory Enabled) ==========
+@app.route("/api/test", methods=["GET"])
+def api_test():
+    """测试API是否正常工作"""
+    return jsonify({
+        "status": "ok",
+        "message": "API服务正常",
+        "client_id": session.get("client_id", "none"),
+        "has_session": "sid" in session
+    })
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     try:
-        data = request.get_json(force=True) or {}
+        print("=== 收到聊天请求 ===")
+        
+        data = request.get_json(force=True, silent=True)
+        print(f"请求数据: {data}")
+        
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+            
         user_message = data.get("message", "").strip()
         client_id = data.get("client_id", "")
+        
+        print(f"用户消息: {user_message}")
+        print(f"客户端ID: {client_id}")
+        print(f"会话ID: {session.get('sid')}")
+        print(f"当前会话客户端ID: {session.get('client_id')}")
 
         if not user_message:
-            return jsonify({"error": "message is required"}), 400
+            return jsonify({"error": "消息不能为空"}), 400
 
-        # 取当前 client_id，没有则从 session 拿
+        # 使用会话中的client_id（如果请求中没有）
         if not client_id:
             client_id = session.get("client_id")
+            
         if not client_id:
-            # 默认使用 client_djjo
-            client_id = "client_djjo"
+            client_id = "client_djjo"  # 默认客户端
             session['client_id'] = client_id
+            print(f"使用默认客户端: {client_id}")
 
-        # 创建模拟器并获取响应
+        # 创建模拟器
+        print(f"正在为 {client_id} 创建模拟器...")
+        simulator = create_simulator(client_id)
+        
+        if not simulator:
+            print("模拟器创建失败")
+            # 返回一个简单的响应
+            return jsonify({
+                "reply": "抱歉，我现在无法连接到AI服务。请稍后再试。",
+                "client_id": client_id
+            })
+
+        # 获取对话历史
+        conversation_history = []
+        if 'conversation' in session:
+            for msg in session['conversation']:
+                if msg['role'] == 'user':
+                    conversation_history.append({"role": "user", "content": msg['content']})
+                elif msg['role'] == 'assistant':
+                    conversation_history.append({"role": "assistant", "content": msg['content']})
+        
+        print(f"对话历史长度: {len(conversation_history)}")
+        
+        # 添加当前用户消息
+        conversation_history.append({"role": "user", "content": user_message})
+        
+        # 生成AI响应
+        print("正在生成AI响应...")
         try:
-            sim = create_simulator(client_id)
-            if not sim:
-                return jsonify({"error": "无法创建模拟器"}), 500
-            
-            # 获取当前对话历史
-            conversation_history = []
-            if 'messages' in session:
-                # 转换消息格式
-                for msg in session['messages']:
-                    if msg['role'] == 'user':
-                        conversation_history.append({"role": "user", "content": msg['content']})
-                    elif msg['role'] == 'assistant':
-                        conversation_history.append({"role": "assistant", "content": msg['content']})
-            
-            # 添加当前用户消息
-            conversation_history.append({"role": "user", "content": user_message})
-            
-            # 生成响应
-            ai_response = sim.generate_response(conversation_history)
-            
+            ai_response = simulator.generate_response(conversation_history)
+            print(f"AI响应: {ai_response[:100]}...")
         except Exception as e:
-            current_app.logger.error(f"Simulator error: {e}")
-            # 返回一个简单的测试响应
-            ai_response = f"我收到了你的消息：'{user_message[:50]}...'。我正在思考如何回应。"
-
-        # 更新 session 消息记录
-        msgs = session.get("messages", [])
-        msgs.append({"role": "user", "content": user_message})
-        msgs.append({"role": "assistant", "content": ai_response})
-        session["messages"] = msgs
+            print(f"生成响应失败: {str(e)}")
+            ai_response = "嗯...我暂时不知道该怎么回答这个问题。能换个方式问吗？"
+        
+        # 保存到会话
+        if 'conversation' not in session:
+            session['conversation'] = []
+        
+        session['conversation'].append({"role": "user", "content": user_message})
+        session['conversation'].append({"role": "assistant", "content": ai_response})
+        
+        # 确保会话保存
         session.modified = True
-
+        
+        print(f"响应成功生成，长度: {len(ai_response)}")
+        
+        # 返回标准格式的响应
         return jsonify({
             "reply": ai_response,
-            "client_id": client_id
+            "client_id": client_id,
+            "success": True
         })
 
     except Exception as e:
+        print(f"!!! /api/chat 严重错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
         current_app.logger.error(f"/api/chat fatal error: {e}")
-        return jsonify({"error": "内部服务器错误", "details": str(e)}), 500
-# ========== END FINAL /api/chat ROUTE ==========
-
+        return jsonify({
+            "error": "内部服务器错误",
+            "reply": "抱歉，服务器遇到了问题。请稍后再试。",
+            "success": False
+        }), 500
 
 def get_conversation_turns(session_id):
     """从文件获取当前会话轮次"""
@@ -1511,10 +1552,6 @@ def start_session(client_id):
                      error_title="服务器错误",
                      error_message="会话初始化失败",
                      error_details=str(error)), 500
-                
-# @app.route('/start-session/client_djjo')
-# def handle_djjo():
-#     return redirect('/start-session/client_djjo')
 
 @app.route('/diagnose/<client_id>')
 def diagnose_client(client_id):
