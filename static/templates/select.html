@@ -1,0 +1,343 @@
+
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .selection-container {
+        display: flex;
+        gap: 30px;
+        margin-top: 30px;
+    }
+    
+    .client-section {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+        font-size: 20px;
+        color: #5b7fff;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .client-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    /* 修改：我的案例库三列布局 */
+    .my-clients-list {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    
+    .client-card {
+        background: #f9f9f9;
+        border-radius: 6px;
+        padding: 15px;
+        transition: all 0.3s;
+    }
+    
+    .client-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .client-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    
+    .client-issue {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    
+    .client-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: #5b7fff;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #4a6fe6;
+    }
+    
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+    
+    .btn-secondary:hover {
+        background: #d0d0d0;
+    }
+    
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #e53935;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+    }
+    
+    .back-btn {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #5b7fff;
+        text-decoration: none;
+        font-size: 14px;
+    }
+    
+    .back-btn:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+<nav class="main-nav">
+    <a href="/training" class="btn primary active">训练</a>
+    <a href="/exam" class="btn secondary">考试</a>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="container">
+    <a href="/training" class="back-btn">← 返回训练主页</a>
+    <h2>选择来访者</h2>
+    
+    <div class="selection-container">
+        <!-- 系统预设案例 -->
+        <div class="client-section">
+            <h3 class="section-title">系统预设案例</h3>
+            <div class="client-list">
+
+                <!-- Djjo -->
+                <div class="client-card">
+                    <div class="client-name">djjo</div>
+                    <div class="client-issue">综合</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_djjo" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_djjo" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+
+                <!-- lxwn -->
+                <div class="client-card">
+                    <div class="client-name">lxwn</div>
+                    <div class="client-issue">人际与亲密关系</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_lxwn" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_lxwn" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+
+                <!-- mqq -->
+                <div class="client-card">
+                    <div class="client-name">mqq</div>
+                    <div class="client-issue">行为与成瘾</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_mqq" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_mqq" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+
+                <!-- sbjg -->
+                <div class="client-card">
+                    <div class="client-name">sbjg</div>
+                    <div class="client-issue">适应障碍</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_sbjg" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_sbjg" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+
+                <!-- sxsu -->
+                <div class="client-card">
+                    <div class="client-name">sxsu</div>
+                    <div class="client-issue">自我认知</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_sxsu" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_sxsu" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+
+                <!-- syan -->
+                <div class="client-card">
+                    <div class="client-name">syan</div>
+                    <div class="client-issue">心境障碍</div>
+                    <div class="client-actions">
+                        <a href="/start-session/client_syan" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/client_syan" class="btn btn-secondary">查看详情</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 用户创建案例 -->
+        <div class="client-section">
+            <h3 class="section-title">我的案例库</h3>
+            {% if clients %}
+            <div class="my-clients-list">
+                {% for client in clients %}
+                {# 修复：使用正确的Jinja2语法过滤预设案例 #}
+                {% set preset_ids = ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan', 'client_psydt', 'client_psi', 'client_lxwn_psydt', 'client_lxwn_psi', 'client_mqq_psydt', 'client_mqq_psi', 'client_sbjg_psydt', 'client_sbjg_psi', 'client_sxsu_psydt', 'client_sxsu_psi', 'client_syan_psydt', 'client_syan_psi'] %}
+                {% if client.id not in preset_ids %}
+                <div class="client-card">
+                    <div class="client-name">{{ client.name }}</div>
+                    <div class="client-issue">{{ client.issue }}</div>
+                    <div class="client-actions">
+                        <a href="/start-session/{{ client.id }}" class="btn btn-primary">进入训练</a>
+                        <a href="/edit-client/{{ client.id }}" class="btn btn-secondary">编辑</a>
+                        <form action="/delete-client/{{ client.id }}" method="POST" class="delete-form" onsubmit="return confirm('确定要删除这个来访者吗？')">
+                            <button type="submit" class="btn btn-danger">删除</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {# 修复：检查是否有用户创建的案例 #}
+            {% set has_user_clients = false %}
+            {% for client in clients %}
+                {% set preset_ids = ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan', 'client_psydt', 'client_psi', 'client_lxwn_psydt', 'client_lxwn_psi', 'client_mqq_psydt', 'client_mqq_psi', 'client_sbjg_psydt', 'client_sbjg_psi', 'client_sxsu_psydt', 'client_sxsu_psi', 'client_syan_psydt', 'client_syan_psi'] %}
+                {% if client.id not in preset_ids %}
+                    {% set has_user_clients = true %}
+                {% endif %}
+            {% endfor %}
+            {% if not has_user_clients %}
+            <div class="empty-message">
+                <p>您还没有创建任何来访者案例</p>
+                <a href="/create-client" class="btn btn-primary" style="margin-top: 10px;">创建新案例</a>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-message">
+                <p>您还没有创建任何来访者案例</p>
+                <a href="/create-client" class="btn btn-primary" style="margin-top: 10px;">创建新案例</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // 删除确认和反馈
+    document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!confirm('确定要永久删除这个来访者案例吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast('来访者已删除', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || '删除失败');
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+                console.error('删除错误:', error);
+            }
+        });
+    });
+    
+    // Toast通知函数
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    // 添加Toast样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: white;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .toast.success {
+            background:rgb(156, 200, 254);
+        }
+        
+        .toast.error {
+            background:rgb(210, 162, 248);
+        }
+        
+        @keyframes slideIn {
+            from { bottom: -50px; opacity: 0; }
+            to { bottom: 20px; opacity: 1; }
+        }
+        
+        .fade-out {
+            animation: fadeOut 0.3s ease-in;
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+
+{% endblock %}

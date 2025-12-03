@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block nav %}
+<nav class="main-nav">
+    <a href="/training" class="btn btn-primary active">训练</a>
+    <a href="/exam" class="btn btn-secondary">考试</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="training-container">
+    <h2>AI来访者模拟训练场</h2>
+    <p class="subtitle">通过模拟真实咨询场景提升您的咨询技能</p>
+    
+    <div class="action-buttons">
+        <a href="/create-client" class="btn btn-primary btn-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+            创建一个新的来访者
+        </a>
+        <a href="/select-client" class="btn btn-secondary btn-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+            </svg>
+            选择一个现成来访者
+        </a>
+    </div>
+</div>
+
+<style>
+    .training-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        text-align: center;
+    }
+    
+    .training-container h2 {
+        font-size: 32px;
+        color: var(--primary);
+        margin-bottom: 10px;
+    }
+    
+    .subtitle {
+        color: var(--text-light);
+        margin-bottom: 40px;
+        font-size: 16px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;  /* 增加按钮间距 */
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .btn-large {
+        padding: 20px 40px;  /* 增大按钮尺寸 */
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    @media (max-width: 600px) {
+        .training-container h2 {
+            font-size: 26px;
+        }
+        
+        .btn-large {
+            padding: 16px 32px;
+            font-size: 18px;
+        }
+    }
+</style>
+{% endblock %}
