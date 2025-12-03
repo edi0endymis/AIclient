@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/chat.css">
+<style>
+    /* 考试模式样式 */
+    .exam-indicators {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .exam-timer, .exam-turn-counter {
+        background: #d9e6ff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #333;
+        border: 1px solid #b8d0ff;
+    }
+    
+    .timer-label, .turn-label {
+        font-size: 12px;
+        color: #4a6fe6;
+        margin-right: 5px;
+    }
+    
+    .timer-value, .turn-value {
+        font-size: 14px;
+        color: #333;
+    }
+    
+    #emergency-end-btn {
+        background: #4a6fe6;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.3s;
+    }
+    
+    #emergency-end-btn:hover {
+        background: #3a5fd6;
+        transform: translateY(-1px);
+    }
+
+    .message.user .content {
+        background: #c4d5fd !important;
+        color: #333;
+        border-bottom-right-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+<nav class="main-nav">
+    <a href="/training" class="btn secondary">训练</a>
+    <a href="/exam" class="btn primary active">考试</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container chat-container">
+    <div class="chat-header">
+        <h2>{{ client.name }} <small>{{ client.issue }}</small></h2>
+        
+        <!-- 考试模式指示器 -->
+        <div class="exam-indicators">
+            <div class="exam-timer" id="exam-timer">
+                <span class="timer-label">剩余时间:</span>
+                <span class="timer-value" id="timer-value">50:00</span>
+            </div>
+            <div class="exam-turn-counter" id="exam-turn-counter">
+                <span class="turn-label">对话轮次:</span>
+                <span class="turn-value" id="turn-value">0/40</span>
+            </div>
+        </div>
+        
+        <div class="header-buttons">
+            <button id="emergency-end-btn" class="btn btn-secondary" title="提前结束考试">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M6 12.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-1v-7A1.5 1.5 0 0 0 7.5 1h-1A1.5 1.5 0 0 0 5 2.5v7h-1a.5.5 0 0 0-.5.5v2Z"/>
+                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5Zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2Z"/>
+                </svg>
+                提前结束
+            </button>
+            
+            <button id="export-btn" class="btn btn-secondary" title="导出对话">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+                导出对话
+            </button>
+            <a href="/exam" class="btn btn-back">返回考试主页</a>
+        </div>
+    </div>
+    
+    <div class="chat-box" id="chat-box">
+        <div class="message ai">
+            <div class="avatar">AI</div>
+            <div class="content">{{ initial_message }}</div>
+        </div>
+    </div>
+    
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="请输入您的回应..." autocomplete="off">
+        <button id="send-btn" class="btn btn-primary">
+            <span>发送</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- 考试结束报告弹窗 -->
+<div id="exam-report-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>考试结束 - 评估报告</h3>
+        </div>
+        <div class="modal-body">
+            <div class="report-section">
+                <h4>考试结果</h4>
+                <div id="exam-basic-info"></div>
+            </div>
+            <div class="report-section">
+                <h4>能力评估</h4>
+                <ul id="exam-skills-assessment"></ul>
+            </div>
+            <div class="report-section">
+                <h4>改进建议</h4>
+                <ul id="exam-improvement-suggestions"></ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="export-exam-report-btn" class="btn btn-primary">导出考试报告</button>
+            <button id="close-exam-report-btn" class="btn btn-secondary">返回首页</button>
+        </div>
+    </div>
+</div>
+
+<!-- 加载指示器模板 -->
+<template id="loading-template">
+    <div class="message ai loading">
+        <div class="avatar">AI</div>
+        <div class="content">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+// 直接使用训练模式的chat.js逻辑，只添加考试功能
+document.addEventListener('DOMContentLoaded', () => {
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const loadingTemplate = document.getElementById('loading-template');
+    const exportBtn = document.getElementById('export-btn');
+
+    // 考试模式变量
+    let examTimer;
+    let remainingTime = 50 * 60;
+    let currentTurns = 0;
+    const maxTurns = 40;
+
+    const timerElement = document.getElementById('timer-value');
+    const turnCounterElement = document.getElementById('turn-value');
+    const emergencyEndBtn = document.getElementById('emergency-end-btn');
+
+    // === 训练模式的共用函数 ===
+    function addMessage(role, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+        messageDiv.innerHTML = `
+            <div class="avatar">${role === 'ai' ? 'AI' : '你'}</div>
+            <div class="content">${content}</div>
+        `;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return messageDiv;
+    }
+
+    function showLoadingIndicator() {
+        const loadingNode = document.importNode(loadingTemplate.content, true);
+        const loadingElement = loadingNode.querySelector('.message');
+        chatBox.appendChild(loadingElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return loadingElement;
+    }
+
+    function hideLoadingIndicator(loadingElement) {
+        if (loadingElement && loadingElement.parentNode) {
+            loadingElement.remove();
+        }
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // === 考试模式特有功能 ===
+    function initExamTimer() {
+        updateTimerDisplay();
+        examTimer = setInterval(() => {
+            remainingTime--;
+            updateTimerDisplay();
+            
+            if (remainingTime <= 0) {
+                endExam('timeout');
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(remainingTime / 60);
+        const seconds = remainingTime % 60;
+        timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (remainingTime <= 5 * 60) {
+            timerElement.style.color = '#ff6b6b';
+        }
+    }
+
+    function updateTurnCounter() {
+        currentTurns++;
+        turnCounterElement.textContent = `${currentTurns}/${maxTurns}`;
+        
+        if (currentTurns >= maxTurns - 5) {
+            turnCounterElement.style.color = '#ffa726';
+        }
+        
+        if (currentTurns >= maxTurns) {
+            endExam('turn_limit');
+        }
+    }
+
+    function endExam(reason) {
+        clearInterval(examTimer);
+        sendBtn.disabled = true;
+        userInput.disabled = true;
+        userInput.placeholder = '考试已结束';
+        
+        showExamReport(generateFallbackReport(reason));
+    }
+
+    function generateFallbackReport(endReason) {
+        const reasonText = endReason === 'timeout' ? '时间耗尽' : '达到最大轮次';
+        return {
+            end_reason: reasonText,
+            total_turns: currentTurns,
+            time_used: 50 * 60 - remainingTime,
+            skills_assessment: [
+                '共情能力：需要更多练习',
+                '问题引导：基本掌握',
+                '伦理规范：符合要求'
+            ],
+            improvement_suggestions: [
+                '建议增加开放式问题的使用',
+                '注意对话节奏的控制',
+                '加强情感回应技巧'
+            ]
+        };
+    }
+
+    function showExamReport(reportData) {
+        const modal = document.getElementById('exam-report-modal');
+        const basicInfo = document.getElementById('exam-basic-info');
+        const skillsAssessment = document.getElementById('exam-skills-assessment');
+        const improvementSuggestions = document.getElementById('exam-improvement-suggestions');
+
+        basicInfo.innerHTML = `
+            <p><strong>结束原因:</strong> ${reportData.end_reason}</p>
+            <p><strong>完成轮次:</strong> ${reportData.total_turns} 轮</p>
+            <p><strong>考试用时:</strong> ${reportData.time_used}</p>
+            <p><strong>评估时间:</strong> ${new Date().toLocaleString('zh-CN')}</p>
+        `;
+
+        skillsAssessment.innerHTML = '';
+        reportData.skills_assessment.forEach(skill => {
+            const li = document.createElement('li');
+            li.textContent = skill;
+            skillsAssessment.appendChild(li);
+        });
+
+        improvementSuggestions.innerHTML = '';
+        reportData.improvement_suggestions.forEach(suggestion => {
+            const li = document.createElement('li');
+            li.textContent = suggestion;
+            improvementSuggestions.appendChild(li);
+        });
+
+        modal.style.display = 'block';
+        
+        // 存储报告数据用于导出
+        window.currentExamReport = reportData;
+    }
+
+    // === 发送消息函数（与训练模式相同）===
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+
+        // 检测可能的阻抗触发条件
+        const mightTriggerImpedance = checkImpedanceTriggers(message);
+        
+        // 添加用户消息
+        addMessage('user', message);
+        userInput.value = '';
+        sendBtn.disabled = true;
+        
+        // 更新考试轮次计数
+        updateTurnCounter();
+        
+        // 显示加载指示器
+        const loadingElement = showLoadingIndicator();
+        
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Check': 'true',
+                    'X-Impedance-Check': mightTriggerImpedance ? 'true' : 'false'
+                },
+                body: JSON.stringify({ 
+                    message: message,
+                    client_id: document.querySelector('.chat-header h2').textContent.split(' ')[0]
+                })
+            });
+            
+            if (response.status === 400) {
+                const error = await response.json();
+                if (error.error === "会话未初始化") {
+                    showToast('会话已过期，正在重新连接...', 'info');
+                    await restartSession();
+                    return;
+                }
+                throw new Error(error.error || '请求失败');
+            }
+            
+            if (!response.ok) {
+                throw new Error('请求失败');
+            }
+            
+            const data = await response.json();
+            hideLoadingIndicator(loadingElement);
+            addMessage('ai', data.response);
+            
+        } catch (error) {
+            hideLoadingIndicator(loadingElement);
+            if (error.message.includes("会话") || error.message.includes("初始化")) {
+                showToast('正在恢复会话...', 'info');
+                await restartSession();
+            } else {
+                showToast(error.message, 'error');
+                console.error('聊天错误:', error);
+            }
+        } finally {
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    }
+
+    // 阻抗触发条件检测函数
+    function checkImpedanceTriggers(message) {
+        const impedanceTriggers = [
+            /\?.*\?/,
+            /(首先|然后|接着|最后).*(其次|然后|接着)/,
+            /(为什么|原因|究竟|到底)/,
+            /(分析一下|解释一下|告诉我)/,
+            /(母亲|爸爸|父亲|家庭|童年|创伤)/,
+            /(自杀|死亡|伤害)/,
+            /(移情|反移情|防御机制|认知扭曲)/,
+            /(你应该|我认为你必须|为什么不|一定是你有地方做错了)/
+        ];
+    
+        return impedanceTriggers.some(pattern => pattern.test(message));
+    }
+
+    async function restartSession() {
+        try {
+            const clientId = document.querySelector('.chat-header h2').textContent.split(' ')[0];
+            const response = await fetch(`/start-exam/${clientId}?_=${Date.now()}`);
+            if (!response.ok) throw new Error('会话重置失败');
+            location.reload();
+        } catch (error) {
+            showToast(`会话错误: ${error.message}`, 'error');
+        }
+    }
+
+    // 导出对话功能
+    function exportConversation() {
+        try {
+            const messages = chatBox.querySelectorAll('.message');
+            let conversationText = `心理咨询对话记录\n`;
+            conversationText += `来访者: ${document.querySelector('.chat-header h2').textContent}\n`;
+            conversationText += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
+            conversationText += '='.repeat(50) + '\n\n';
+            
+            messages.forEach((message, index) => {
+                const role = message.classList.contains('ai') ? 'AI来访者' : '咨询师';
+                const content = message.querySelector('.content').textContent;
+                conversationText += `${index + 1}. [${role}]: ${content}\n\n`;
+            });
+            
+            const blob = new Blob([conversationText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const clientName = document.querySelector('.chat-header h2').textContent.split(' ')[0];
+            const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.href = url;
+            a.download = `${clientName}_考试对话记录_${timestamp}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('对话导出成功！', 'success');
+        } catch (error) {
+            console.error('导出对话失败:', error);
+            showToast('导出失败，请重试', 'error');
+        }
+    }
+
+    // 事件监听
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    
+    exportBtn.addEventListener('click', exportConversation);
+    emergencyEndBtn.addEventListener('click', () => {
+        if (confirm('确定要提前结束考试吗？这将立即生成评估报告。')) {
+            endExam('manual');
+        }
+    });
+
+    // 弹窗关闭事件
+    const closeReportBtn = document.getElementById('close-exam-report-btn');
+    const exportReportBtn = document.getElementById('export-exam-report-btn');
+
+    closeReportBtn.addEventListener('click', () => {
+        document.getElementById('exam-report-modal').style.display = 'none';
+        window.location.href = '/exam';
+    });
+
+    exportReportBtn.addEventListener('click', async () => {
+        try {
+            // 获取当前考试数据
+            const reportData = {
+                end_reason: document.querySelector('#exam-basic-info p:first-child')?.textContent.replace('结束原因:', '').trim() || '手动结束',
+                total_turns: currentTurns,
+                time_used: 50 * 60 - remainingTime,
+                skills_assessment: Array.from(document.querySelectorAll('#exam-skills-assessment li')).map(li => li.textContent),
+                improvement_suggestions: Array.from(document.querySelectorAll('#exam-improvement-suggestions li')).map(li => li.textContent)
+            };
+            
+            const response = await fetch('/api/export-exam-report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    report_data: reportData
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('导出失败');
+            }
+            
+            // 处理PDF下载
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `考试评估报告_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('考试报告导出成功！', 'success');
+        } catch (error) {
+            console.error('导出考试报告失败:', error);
+            showToast('导出失败，请重试', 'error');
+        }
+    });
+
+    // 初始化
+    initExamTimer();
+    userInput.focus();
+});
+</script>
+
+{% endblock %}
+
+

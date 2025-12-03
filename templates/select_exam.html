@@ -1,0 +1,112 @@
+{% block head %}
+<style>
+    .selection-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .exam-notice {
+        background: rgb(199, 228, 255);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        border-left: 4px solid rgb(156, 200, 254);
+    }
+    
+    .client-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    
+    .client-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .client-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .client-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    
+    .client-issue {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 15px;
+    }
+    
+    .exam-badge {
+        background: rgb(156, 200, 254);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-bottom: 10px;
+        display: inline-block;
+    }
+    
+    .btn-exam {
+        background: rgb(156, 200, 254);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    
+    .btn-exam:hover {
+        background: rgb(140, 180, 230);
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+<nav class="main-nav">
+    <a href="/training" class="btn secondary">训练</a>
+    <a href="/exam" class="btn primary active">考试</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="selection-container">
+    <a href="/exam" class="btn-back">← 返回考试主页</a>
+    
+    <div class="exam-notice">
+        <h3>考试模式说明</h3>
+        <p>• 考试时长：<strong>50分钟</strong> | 对话轮次：<strong>最多40轮</strong></p>
+        <p>• 满足任一条件即自动结束考试</p>
+        <p>• 考试结束后将生成详细评估报告</p>
+    </div>
+    
+    <h2>选择考试案例</h2>
+    
+    <div class="client-list">
+        <!-- 系统预设案例 -->
+        {% for client in clients %}
+        {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+        <div class="client-card">
+            <div class="exam-badge">考试案例</div>
+            <div class="client-name">{{ client.name }}</div>
+            <div class="client-issue">{{ client.issue }}</div>
+            <a href="/start-exam/{{ client.id }}" class="btn-exam">开始考试</a>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

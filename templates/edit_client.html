@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="/static/js/client_editor.js"></script>
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    .form-title {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #5b7fff;
+        font-size: 24px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #5b7fff;
+        outline: none;
+    }
+    
+    .key-events-section {
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: #f9f9f9;
+    }
+    
+    .event-item {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .event-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .event-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: #5b7fff;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #4a6fe6;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+    
+    .btn-secondary:hover {
+        background: #e0e0e0;
+    }
+    
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #e53935;
+    }
+    
+    .btn-back {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        color: #5b7fff;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+    }
+    
+    .btn-back:hover {
+        text-decoration: underline;
+    }
+    
+    .readonly-field {
+        background-color: #f5f5f5;
+        color: #666;
+        cursor: not-allowed;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-style: italic;
+    }
+    
+    .field-description {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <a href="/select-client" class="btn-back">← 返回案例列表</a>
+    
+    <h2 class="form-title">
+        {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+        查看来访者详情
+        {% else %}
+        编辑来访者档案
+        {% endif %}
+    </h2>
+    
+    <form id="edit-client-form" class="form">
+        <input type="hidden" name="client_id" value="{{ client.id }}">
+        
+        <!-- 基本信息 -->
+        <div class="form-group">
+            <label for="name">姓名</label>
+            <input type="text" id="name" name="name" value="{{ client.name }}" 
+                   {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
+        </div>
+        
+        <div class="form-group">
+            <label for="age">年龄</label>
+            <input type="number" id="age" name="age" 
+                   value="{{ client.role_data.base_profile.get('年龄', 30) }}" 
+                   min="12" max="88" 
+                   {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
+        </div>
+        
+        <div class="form-group">
+            <label for="gender">性别</label>
+            <select id="gender" name="gender" {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}disabled class="readonly-field"{% endif %} required>
+                <option value="male" {% if client.role_data.base_profile.get('性别', '女') == '男' %}selected{% endif %}>男</option>
+                <option value="female" {% if client.role_data.base_profile.get('性别', '女') == '女' %}selected{% endif %}>女</option>
+            </select>
+            {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+            <input type="hidden" name="gender" value="{{ 'male' if client.role_data.base_profile.get('性别', '女') == '男' else 'female' }}">
+            {% endif %}
+        </div>
+        
+        <!-- 关键事件部分 -->
+        <div class="key-events-section">
+            <h3 style="margin-bottom: 15px; color: #5b7fff;">关键事件</h3>
+            <div id="key-events-container">
+                {% set key_events = client.role_data.base_profile.get('关键事件', []) %}
+                {% if key_events and key_events | length > 0 %}
+                    {% for event in key_events %}
+                    <div class="event-item" data-index="{{ loop.index0 }}">
+                        <div class="event-header">
+                            <h4>事件 {{ loop.index }}</h4>
+                            {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+                            <div class="event-actions">
+                                <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label>事件名称</label>
+                            <input type="text" name="event_name[]" value="{{ event.get('标签', '') }}" 
+                                   {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
+                        </div>
+                        <div class="form-group">
+                            <label>事件内容</label>
+                            <textarea name="event_content[]" rows="3" 
+                                      {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>{{ event.get('摘要', '') }}</textarea>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-message">
+                        <p>暂无关键事件记录</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+            <button type="button" id="add-event-btn" class="btn btn-secondary">添加关键事件</button>
+            {% endif %}
+        </div>
+        
+        <!-- 核心信念 -->
+        <div class="form-group">
+            <label for="core_beliefs">核心信念</label>
+            <textarea id="core_beliefs" name="core_beliefs" rows="6" 
+                      {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
+{%- set core_beliefs = client.role_data.cognitive_emotional_model.get('核心信念', []) -%}
+{%- if core_beliefs -%}
+{% for belief in core_beliefs -%}
+{{ belief }}{% if not loop.last %}{{ '\n' }}{% endif %}
+{%- endfor -%}
+{%- else -%}
+暂无核心信念记录
+{%- endif -%}</textarea>
+        </div>
+        
+        <div class="form-actions">
+            <a href="/select-client" class="btn btn-secondary">返回案例列表</a>
+            {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
+            <button type="submit" class="btn btn-primary">保存修改</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('edit-client-form');
+        const eventsContainer = document.getElementById('key-events-container');
+        const addEventBtn = document.getElementById('add-event-btn');
+        
+        // 系统预设案例：只显示，不编辑
+        const isPresetClient = '{{ client.id }}' === 'client_djjo' || 
+                            '{{ client.id }}' === 'client_lxwn' || 
+                            '{{ client.id }}' === 'client_mqq' || 
+                            '{{ client.id }}' === 'client_sbjg' || 
+                            '{{ client.id }}' === 'client_sxsu' || 
+                            '{{ client.id }}' === 'client_syan';
+
+        // 添加关键事件（仅对用户创建案例可用）
+        if (addEventBtn && !isPresetClient) {
+            addEventBtn.addEventListener('click', function() {
+                const eventCount = eventsContainer.querySelectorAll('.event-item').length;
+                const newEventHtml = `
+                    <div class="event-item" data-index="${eventCount}">
+                        <div class="event-header">
+                            <h4>事件 ${eventCount + 1}</h4>
+                            <div class="event-actions">
+                                <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>事件名称</label>
+                            <input type="text" name="event_name[]" value="" required>
+                        </div>
+                        <div class="form-group">
+                            <label>事件内容</label>
+                            <textarea name="event_content[]" rows="3" required></textarea>
+                        </div>
+                    </div>
+                `;
+                
+                // 如果当前显示"暂无关键事件"，先移除该消息
+                const emptyMessage = eventsContainer.querySelector('.empty-message');
+                if (emptyMessage) {
+                    emptyMessage.remove();
+                }
+                
+                eventsContainer.insertAdjacentHTML('beforeend', newEventHtml);
+            });
+        }
+        
+        // 删除关键事件（仅对用户创建案例可用）
+        if (!isPresetClient) {
+            eventsContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-event')) {
+                    e.target.closest('.event-item').remove();
+                    updateEventNumbers();
+                    
+                    // 如果没有事件了，显示空消息
+                    if (eventsContainer.querySelectorAll('.event-item').length === 0) {
+                        eventsContainer.innerHTML = '<div class="empty-message"><p>暂无关键事件记录</p></div>';
+                    }
+                }
+            });
+        }
+        
+        function updateEventNumbers() {
+            const events = eventsContainer.querySelectorAll('.event-item');
+            events.forEach((event, index) => {
+                event.querySelector('h4').textContent = `事件 ${index + 1}`;
+            });
+        }
+        
+        // 表单提交处理（仅对用户创建案例可用）
+        if (form && !isPresetClient) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const data = {
+                    name: formData.get('name'),
+                    age: parseInt(formData.get('age')),
+                    gender: formData.get('gender'),
+                    core_beliefs: formData.get('core_beliefs')
+                };
+                
+                // 收集关键事件
+                const eventNames = formData.getAll('event_name[]');
+                const eventContents = formData.getAll('event_content[]');
+                data.key_events = [];
+                
+                for (let i = 0; i < eventNames.length; i++) {
+                    if (eventNames[i] && eventContents[i]) {
+                        data.key_events.push({
+                            事件名称: eventNames[i].trim(),
+                            事件内容: eventContents[i].trim()
+                        });
+                    }
+                }
+                
+                // 验证必填字段
+                if (!data.name || !data.age || !data.gender || !data.core_beliefs.trim()) {
+                    alert('请填写所有必填字段');
+                    return;
+                }
+                
+                // 发送请求
+                fetch(`/edit-client/${formData.get('client_id')}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('来访者信息已更新！');
+                        window.location.href = '/select-client';
+                    } else {
+                        alert('保存失败: ' + (result.error || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('保存过程中发生错误');
+                });
+            });
+        } else if (isPresetClient) {
+            // 系统预设案例：禁用表单提交
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('系统预设案例不可编辑');
+            });
+        }
+    });
+</script>
+{% endblock %}

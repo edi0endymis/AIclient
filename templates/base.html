@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI来访者模拟系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon"> 
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>AI来访者模拟系统</h1>
+            {% block nav %}{% endblock %}
+        </div>
+    </header>
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <p>© 2025 AI来访者模拟系统</p>
+    </footer>
+    
+    <script src="/static/js/main.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+
+
+
+<style>
+    :root {
+        --primary: #5b7fff;
+        --primary-hover: #3f63db;
+        --secondary: #f0f0f0;
+        --secondary-hover: #e0e0e0;
+        --text: #333;
+        --text-light: #666;
+        --bg: #f5f7fa;
+        --white: #ffffff;
+        --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+    
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text);
+        background: var(--bg);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    header {
+        background: var(--white);
+        box-shadow: var(--shadow);
+        padding: 20px 0;
+    }
+    
+    .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+        text-align: center;
+    }
+    
+    header h1 {
+        font-size: 28px;
+        color: var(--primary);
+        margin-bottom: 20px;
+    }
+    
+    main {
+        flex: 1;
+        padding: 30px 20px;
+    }
+    
+    footer {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-light);
+        font-size: 14px;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 15px 30px;  /* 增大按钮尺寸 */
+        border-radius: 6px;
+        font-size: 18px;    /* 增大字体大小 */
+        font-weight: 500;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: var(--primary);
+        color: var(--white);
+    }
+    
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(91, 127, 255, 0.3);
+    }
+    
+    .btn-secondary {
+        background: var(--secondary);
+        color: var(--text);
+    }
+    
+    .btn-secondary:hover {
+        background: var(--secondary-hover);
+        transform: translateY(-2px);
+    }
+    
+    .btn.active {
+        background: var(--primary);
+        color: var(--white);
+    }
+    
+    .main-nav {
+        display: flex;
+        justify-content: center;
+        gap: 40px;  /* 增加按钮间距 */
+        margin: 30px 0;
+    }
+</style>

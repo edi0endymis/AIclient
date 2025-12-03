@@ -1,0 +1,354 @@
+
+{% extends "base.html" %}
+
+{% block head %}
+<script src="/static/js/client_creator.js"></script>
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    .form-title {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #5b7fff;
+        font-size: 24px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #5b7fff;
+        outline: none;
+    }
+    
+    .key-events-section {
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: #f9f9f9;
+    }
+    
+    .event-item {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .event-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .event-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: #5b7fff;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #4a6fe6;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+    
+    .btn-secondary:hover {
+        background: #e0e0e0;
+    }
+    
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #e53935;
+    }
+    
+    .btn-back {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        color: #5b7fff;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+    }
+    
+    .btn-back:hover {
+        text-decoration: underline;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <a href="/select-client" class="btn-back">← 返回案例列表</a>
+    
+    <h2 class="form-title">创建新的来访者档案</h2>
+    
+    <form id="client-form" class="form">
+        <!-- 基本信息 -->
+        <div class="form-group">
+            <label for="name">姓名</label>
+            <input type="text" id="name" name="name" required placeholder="来访者姓名">
+        </div>
+        
+        <div class="form-group">
+            <label for="age">年龄</label>
+            <input type="number" id="age" name="age" min="12" max="88" required placeholder="30" value="30">
+        </div>
+        
+        <div class="form-group">
+            <label for="gender">性别</label>
+            <select id="gender" name="gender" required>
+                <option value="male">男</option>
+                <option value="female" selected>女</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="main_issue">主要问题</label>
+            <input type="text" id="main_issue" name="main_issue" required placeholder="例如：亲密关系恐惧、职业焦虑等">
+        </div>
+        
+        <div class="form-group">
+            <label for="background">背景故事</label>
+            <textarea id="background" name="background" rows="5" required placeholder="详细描述来访者的背景、成长经历和关键事件"></textarea>
+        </div>
+        
+        <!-- 关键事件部分 -->
+        <div class="key-events-section">
+            <h3 style="margin-bottom: 15px; color: #5b7fff;">关键事件</h3>
+            <div id="key-events-container">
+                <div class="empty-message">
+                    <p>暂无关键事件记录</p>
+                </div>
+            </div>
+            
+            <button type="button" id="add-event-btn" class="btn btn-secondary">添加关键事件</button>
+        </div>
+        
+        <!-- 核心信念 -->
+        <div class="form-group">
+            <label for="core_beliefs">核心信念</label>
+            <textarea id="core_beliefs" name="core_beliefs" rows="6" required placeholder="请输入来访者的核心信念，每行一个"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="style">沟通风格</label>
+            <select id="style" name="style">
+                <option value="natural" selected>自然</option>
+                <option value="formal">正式</option>
+                <option value="resistant">抗拒</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="initial_stage">初始阶段</label>
+            <select id="initial_stage" name="initial_stage">
+                <option value="defensive" selected>防御期</option>
+                <option value="exploratory">试探期</option>
+                <option value="open">开放期</option>
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='/select-client'">取消</button>
+            <button type="submit" class="btn btn-primary">创建并进入训练</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('client-form');
+        const eventsContainer = document.getElementById('key-events-container');
+        const addEventBtn = document.getElementById('add-event-btn');
+        
+        // 添加关键事件
+        addEventBtn.addEventListener('click', function() {
+            const eventCount = eventsContainer.querySelectorAll('.event-item').length;
+            const newEventHtml = `
+                <div class="event-item" data-index="${eventCount}">
+                    <div class="event-header">
+                        <h4>事件 ${eventCount + 1}</h4>
+                        <div class="event-actions">
+                            <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>事件名称</label>
+                        <input type="text" name="event_name[]" value="" required placeholder="事件名称">
+                    </div>
+                    <div class="form-group">
+                        <label>事件内容</label>
+                        <textarea name="event_content[]" rows="3" required placeholder="详细描述事件内容"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            // 如果当前显示"暂无关键事件"，先移除该消息
+            const emptyMessage = eventsContainer.querySelector('.empty-message');
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+            
+            eventsContainer.insertAdjacentHTML('beforeend', newEventHtml);
+        });
+        
+        // 删除关键事件
+        eventsContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-event')) {
+                e.target.closest('.event-item').remove();
+                updateEventNumbers();
+                
+                // 如果没有事件了，显示空消息
+                if (eventsContainer.querySelectorAll('.event-item').length === 0) {
+                    eventsContainer.innerHTML = '<div class="empty-message"><p>暂无关键事件记录</p></div>';
+                }
+            }
+        });
+        
+        function updateEventNumbers() {
+            const events = eventsContainer.querySelectorAll('.event-item');
+            events.forEach((event, index) => {
+                event.querySelector('h4').textContent = `事件 ${index + 1}`;
+            });
+        }
+        
+        // 表单提交处理
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 收集表单数据
+            const formData = new FormData(form);
+            
+            // 收集关键事件
+            const eventNames = formData.getAll('event_name[]');
+            const eventContents = formData.getAll('event_content[]');
+            const key_events = [];
+            
+            for (let i = 0; i < eventNames.length; i++) {
+                if (eventNames[i] && eventContents[i]) {
+                    key_events.push({
+                        标签: eventNames[i].trim(),
+                        摘要: eventContents[i].trim()
+                    });
+                }
+            }
+            
+            const data = {
+                name: formData.get('name'),
+                age: parseInt(formData.get('age')),
+                gender: formData.get('gender'),
+                main_issue: formData.get('main_issue'),
+                background: formData.get('background'),
+                style: formData.get('style'),
+                initial_stage: formData.get('initial_stage'),
+                core_beliefs: formData.get('core_beliefs'),
+                key_events: key_events
+            };
+            
+            // 验证必填字段
+            if (!data.name || !data.main_issue || !data.background || !data.core_beliefs.trim()) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            // 发送创建请求
+            fetch('/create-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    window.location.href = `/start-session/${result.client_id}`;
+                } else {
+                    alert('创建失败: ' + (result.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('创建过程中发生错误');
+            });
+        });
+    });
+</script>
+{% endblock %}
