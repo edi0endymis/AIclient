@@ -138,12 +138,18 @@ def api_chat():
 
         # 从 simulator 获取响应
         try:
-            from ai_role_simulator.simulator import Simulator
-            sim = Simulator(client_id=client_id)
-            ai_response = sim.generate_response(user_message)
+            from ai_role_simulator import Simulator
+            # 创建模拟器实例
+            sim = create_simulator(client_id)
+            if not sim:
+                return jsonify({"error": "无法创建模拟器"}), 500
+            
+            # 生成响应
+            conversation = session.get("messages", [])
+            ai_response = sim.generate_response(conversation)
         except Exception as e:
             current_app.logger.error(f"Simulator error: {e}")
-            return jsonify({"error": "simulator internal error"}), 500
+            return jsonify({"error": f"模拟器内部错误: {str(e)}"}), 500
 
         # 写入记忆 + 摘要（关键）
         try:
@@ -2350,6 +2356,22 @@ def get_reason_text(reason):
         'unknown': '未知原因'
     }
     return reason_map.get(reason, '未知原因')
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """提供 JS 文件"""
+    try:
+        return send_from_directory('js', filename)
+    except FileNotFoundError:
+        return send_from_directory('static/js', filename)
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    """提供 CSS 文件"""
+    try:
+        return send_from_directory('css', filename)
+    except FileNotFoundError:
+        return send_from_directory('static/css', filename)
 
 @app.route('/static/<path:filename>')
 def static_files(filename):

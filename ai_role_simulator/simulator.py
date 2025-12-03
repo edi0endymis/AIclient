@@ -208,4 +208,9 @@ class AIRoleSimulator:
         return self.role_data
 
 
+class Simulator(AIRoleSimulator):
+    """Simulator 别名类，保持向后兼容性"""
+    pass
 
+# 确保 __all__ 包含 Simulator
+__all__ = ['AIRoleSimulator', 'Simulator', 'ConversationState']
