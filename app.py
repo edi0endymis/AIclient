@@ -14,10 +14,25 @@ import pickle
 from datetime import datetime
 from functools import wraps
 
-# ========== ReportLab 导入（不注册字体）==========
-# 只导入，不注册字体！让ReportLab使用它的内置字体
+# ========== ReportLab 导入（注册中文字体）==========
 from reportlab.pdfbase import pdfmetrics
-print("✅ PDF系统: 使用ReportLab内置默认字体")
+from reportlab.pdfbase.ttfonts import TTFont
+
+try:
+    # 使用你的 ZTwyrh.ttc 字体文件
+    font_path = os.path.join(os.path.dirname(__file__), 'ZTwyrh.ttc')
+    
+    if os.path.exists(font_path):
+        # 注册字体，命名为 'ZTFont'
+        pdfmetrics.registerFont(TTFont('ZTFont', font_path))
+        print(f"✅ PDF系统: 已成功注册 ZTFont 字体，使用文件 {font_path}")
+    else:
+        print(f"❌ 错误: 字体文件不存在: {font_path}")
+        print("⚠️ PDF系统: 使用ReportLab内置默认字体（中文可能显示异常）")
+        
+except Exception as e:
+    print(f"❌ 字体注册失败: {e}")
+    print("⚠️ PDF系统: 使用ReportLab内置默认字体（中文可能显示异常）")
 
 from config import Config
 from openai import OpenAI
@@ -1970,98 +1985,6 @@ def wai_feedback():
         app.logger.error(f"WAI 评分失败: {str(error)}")
         return jsonify({"error": str(error)}), 500
 
-@app.route('/api/wai-feedback', methods=['POST'])
-@require_session
-def wai_feedback():
-    """
-    通用 WAI 评分 API（训练/考试共用）。
-    前端不需要传 conversation（会从 session/file 读取），可传 mode/meta。
-    返回 JSON：{wai_scores, wai_total, item_comments, suggestions, brief_rationale, raw_text}
-    """
-    try:
-        payload = request.get_json(force=True, silent=True) or {}
-        mode = payload.get('mode', 'train')
-        extra_meta = payload.get('meta', {})
-        # 获取对话记录（优先文件，再 session）
-        session_id = session.get('sid')
-        conversation = load_conversation_from_file(session_id)
-        if not conversation:
-            conversation = session.get('conversation', [])
-
-        if not conversation:
-            return jsonify({"error": "没有对话内容"}), 400
-
-        # 读取 WAI 文档（若存在）
-        wai_text = load_wai_text()
-
-        prompt = make_wai_prompt(wai_text, conversation, mode=mode, meta=extra_meta)
-
-        # 调用 OpenAI via existing openai_client
-        messages = [
-            {"role": "system", "content": "You are a concise, structured evaluator."},
-            {"role": "user", "content": prompt}
-        ]
-
-        # 调用模型
-        try:
-            resp = openai_client.chat.completions.create(
-                model=app.config.get('OPENAI_MODEL'),
-                messages=messages,
-                max_tokens=800,
-                timeout=60
-            )
-            text = resp.choices[0].message.content.strip()
-        except Exception as e:
-            app.logger.error(f"WAI 模型调用失败: {e}")
-            return jsonify({"error": "模型调用失败", "detail": str(e)}), 500
-
-        # 尝试解析 JSON（宽容处理）
-        parsed = None
-        try:
-            parsed = json.loads(text)
-        except Exception:
-            # 有时模型会在文本前后附带 Markdown 或说明，尝试抽取 JSON 子串
-            import re
-            m = re.search(r'(\{.*\})', text, re.S)
-            if m:
-                try:
-                    parsed = json.loads(m.group(1))
-                except Exception:
-                    parsed = None
-
-        result = {
-            "raw_text": text
-        }
-        if parsed and isinstance(parsed, dict):
-            result.update(parsed)
-        else:
-            # 当解析失败时，放回 raw_text 并返回提醒
-            result.update({
-                "wai_scores": None,
-                "wai_total": None,
-                "item_comments": None,
-                "suggestions": None,
-                "brief_rationale": None,
-                "note": "模型输出无法解析为JSON，请检查 raw_text 字段"
-            })
-
-        # 将 wai 评分保存到 session['last_feedback'] 以便后续导出
-        session['last_feedback'] = result
-        session.modified = True
-
-        # 同时把最后反馈也写入 last_report（如果存在），以便 PDF 导出包含 WAI
-        last_report = session.get('last_report', {})
-        last_report['wai_feedback'] = result
-        session['last_report'] = last_report
-        session.modified = True
-
-        return jsonify(result)
-
-    except Exception as error:
-        app.logger.error(f"WAI 评分失败: {str(error)}")
-        return jsonify({"error": str(error)}), 500
-# ---------- WAI 评分实现结束 ----------
-
 
 @app.route('/api/export-report', methods=['POST'])
 @require_session
@@ -2078,23 +2001,19 @@ def export_report():
         # 创建内存缓冲
         buffer = io.BytesIO()
         
-        # 导入ReportLab组件
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
-        
-        # 创建PDF文档
-        doc = SimpleDocTemplate(
-            buffer, 
-            pagesize=A4,
-            leftMargin=40,
-            rightMargin=40,
-            topMargin=40,
-            bottomMargin=40
-        )
-        
-        # 获取样式 - 不要设置自定义字体！
+        from reportlab.lib import colors
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
+
         styles = getSampleStyleSheet()
+        
+        for style_name in ['Normal', 'Heading1', 'Heading2', 'Heading3', 'Title']:
+            if style_name in styles:
+                styles[style_name].fontName = 'ZTFont'
         
         story = []
         
