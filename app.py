@@ -11,7 +11,7 @@ from reportlab.pdfbase import pdfmetrics
 from datetime import datetime
 import pytz
 pdfmetrics.registerFont(TTFont('ZTFont', 'ZTwyrh.ttc'))
-
+from pathlib import Path
 
 import json
 import time
@@ -89,20 +89,43 @@ from ai_role_simulator.clients.syan.data_PatientPsi_syan import (
     events as syan_events, status as syan_status, notes as syan_notes
 )
 
+def ensure_memory_dirs():
+    """确保内存存储目录存在"""
+    # 主数据目录
+    data_dir = app.config.get('DATA_DIR', os.path.join(os.path.dirname(__file__), 'data'))
+    os.makedirs(data_dir, exist_ok=True)
+    
+    # 内存存储目录
+    memory_dir = os.path.join(os.path.dirname(__file__), 'data_memory')
+    os.makedirs(memory_dir, exist_ok=True)
+    
+    # 会话数据目录
+    conversation_dir = app.config.get('CONVERSATION_DATA_DIR', 
+                                     os.path.join(data_dir, 'conversations'))
+    os.makedirs(conversation_dir, exist_ok=True)
+    
+    return {
+        'data_dir': data_dir,
+        'memory_dir': memory_dir,
+        'conversation_dir': conversation_dir
+    }
+
+# 在应用启动时调用
+with app.app_context():
+    dirs = ensure_memory_dirs()
+    print(f"确保目录存在: {dirs}")
+
 # 设置静态文件目录
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 if os.path.exists(static_dir):
-    app = Flask(__name__, static_folder=static_dir)
+    app = Flask(__name__, static_folder=static_dir, template_folder='templates')
 else:
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='templates')
 
-# 然后继续原来的配置
-app.config['JSON_AS_ASCII'] = False  # 确保JSON使用UTF-8
+# 确保JSON使用UTF-8
+app.config['JSON_AS_ASCII'] = False  
 app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
 
-app = Flask(__name__)
-app.config['JSON_AS_ASCII'] = False  # 确保JSON使用UTF-8
-app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
 # 启用CORS支持
 if app.config.get('CORS_ENABLED', False):
     CORS(app, resources={r"/api/*": {"origins": app.config.get('ALLOWED_ORIGINS', '*')}})
@@ -138,6 +161,7 @@ def api_test():
         "client_id": session.get("client_id", "none"),
         "has_session": "sid" in session
     })
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     try:
@@ -175,7 +199,6 @@ def api_chat():
         
         if not simulator:
             print("模拟器创建失败")
-            # 返回一个简单的响应
             return jsonify({
                 "reply": "抱歉，我现在无法连接到AI服务。请稍后再试。",
                 "client_id": client_id
@@ -203,6 +226,14 @@ def api_chat():
         except Exception as e:
             print(f"生成响应失败: {str(e)}")
             ai_response = "嗯...我暂时不知道该怎么回答这个问题。能换个方式问吗？"
+        
+        # ============ 新增：调用长时记忆集成 ============
+        try:
+            safe_integrate_memory(client_id, user_message, ai_response)
+            print("长时记忆集成成功")
+        except Exception as mem_error:
+            print(f"长时记忆集成失败（不影响主流程）: {mem_error}")
+        # =============================================
         
         # 保存到会话
         if 'conversation' not in session:

@@ -413,40 +413,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Session-Check': 'true',
-                    'X-Impedance-Check': mightTriggerImpedance ? 'true' : 'false'  // 新增阻抗检测头
+                    'X-Impedance-Check': mightTriggerImpedance ? 'true' : 'false'
                 },
                 body: JSON.stringify({ 
                     message: message,
-                    client_id: document.querySelector('.chat-header h2').textContent.split(' ')[0]
+                    client_id: document.querySelector('.chat-header h2').textContent.split(' ')[0] || 'client_djjo'
                 })
             });
             
+            console.log('API响应状态:', response.status); // 调试信息
+            
             if (response.status === 400) {
                 const error = await response.json();
+                console.log('API错误详情:', error); // 调试信息
                 if (error.error === "会话未初始化") {
                     showToast('会话已过期，正在重新连接...', 'info');
                     await restartSession();
                     return;
                 }
-                throw new Error(error.error || '请求失败');
+                throw new Error(error.error || '请求失败: ' + response.status);
             }
             
             if (!response.ok) {
-                throw new Error('请求失败');
+                const errorText = await response.text();
+                console.error('API响应文本:', errorText); // 调试信息
+                throw new Error('请求失败: ' + response.status);
             }
             
             const data = await response.json();
+            console.log('API响应数据:', data); // 调试信息
+            
             hideLoadingIndicator(loadingElement);
-            addMessage('ai', data.response);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            if (data.reply) {
+                addMessage('ai', data.reply);
+            } else {
+                throw new Error('没有收到回复');
+            }
             
         } catch (error) {
             hideLoadingIndicator(loadingElement);
+            console.error('完整的错误信息:', error); // 调试信息
+            
             if (error.message.includes("会话") || error.message.includes("初始化")) {
                 showToast('正在恢复会话...', 'info');
                 await restartSession();
             } else {
-                showToast(error.message, 'error');
-                console.error('聊天错误:', error);
+                // 添加更详细的错误信息
+                const errorMsg = error.message || '未知错误';
+                showToast(`发送失败: ${errorMsg}`, 'error');
+                // 添加一个默认回复，确保对话可以继续
+                addMessage('ai', '抱歉，我暂时无法处理您的请求。请重试。');
             }
         } finally {
             sendBtn.disabled = false;

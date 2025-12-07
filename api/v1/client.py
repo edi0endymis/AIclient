@@ -142,10 +142,25 @@ def list_clients():
             "details": str(e)
         }), 500
 
+# 修改 api/v1/client.py 中的 chat 路由：
+
 @api_blueprint.route('/chat', methods=['POST'])
 def chat():
-    from code.memory.memory import Memory
-    from code.memory.summary import SummaryMemory
+    # 修改导入路径，确保可以找到memory模块
+    try:
+        # 首先尝试从code包导入
+        from code.memory.memory import Memory
+        from code.memory.summary import SummaryMemory
+    except ImportError:
+        try:
+            # 如果失败，尝试从memory包导入
+            from memory.memory import Memory
+            from memory.summary import SummaryMemory
+        except ImportError:
+            # 如果都失败，记录错误但不阻塞
+            Memory = None
+            SummaryMemory = None
+            app.logger.warning("无法导入Memory模块，长时记忆功能不可用")
 
     try:
         data = request.get_json(force=True)
@@ -179,53 +194,63 @@ def chat():
     # ---------------------------------------------------------
     #              长时记忆 Memory + 摘要 SummaryMemory
     # ---------------------------------------------------------
-
-    try:
-        # 从 code 包加载 Memory 实现
-        from code.memory.memory import Memory
-        from code.memory.summary import SummaryMemory
-        from code.memory.utils import now_timestamp
-        namespace = f"client_{client_id or session.get('client_id','anonymous')}"
-
-        mem = Memory(namespace=namespace)
-        summary = SummaryMemory(namespace=f"{namespace}_summary")
-
-        # 保存用户消息（已经在 conversation 中，但再次写入以保证历史）
+    if Memory and SummaryMemory:  # 只在模块可用时执行
         try:
-            mem.add(message, metadata={"role": "user", "ts": now_timestamp()})
-        except TypeError:
-            mem.add(message)
+            # 简化导入，使用统一的时间函数
+            import time
+            def now_timestamp():
+                return int(time.time() * 1000)
+                
+            namespace = f"client_{client_id or session.get('client_id','anonymous')}"
 
-        # 保存 AI 回复
-        try:
-            mem.add(ai_reply, metadata={"role": "assistant", "ts": now_timestamp()})
-        except TypeError:
-            mem.add(ai_reply)
+            mem = Memory(namespace=namespace)
+            summary = SummaryMemory(namespace=f"{namespace}_summary")
 
-        # 更新摘要（把 user + assistant 最新消息追加）
-        try:
-            summary.add_messages([
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": ai_reply}
-            ])
-        except Exception:
-            # 兼容旧接口
-            summary.update(message)
-            summary.update(ai_reply, role="assistant")
+            # 保存用户消息
+            try:
+                mem.add(user_message, metadata={"role": "user", "ts": now_timestamp()})
+            except TypeError:
+                mem.add(user_message)
 
-        # 把简短摘要写入 session['last_report']，以便 PDF 导出读取
-        last_report = session.get('last_report', {})
-        last_report['short_summary'] = summary.get_summary()
-        session['last_report'] = last_report
-        session.modified = True
+            # 保存 AI 回复
+            try:
+                mem.add(ai_response, metadata={"role": "assistant", "ts": now_timestamp()})
+            except TypeError:
+                mem.add(ai_response)
 
-    except Exception as __mem_e:
-        # 记忆错误不应阻塞主流程，仅记录日志
-        try:
-            app.logger.warning(f"Memory integration error (client.chat): {__mem_e}")
-        except Exception:
-            pass
-    # ---------- END 插入（client.py chat） ----------
+            # 更新摘要
+            try:
+                summary.add_messages([
+                    {"role": "user", "content": user_message},
+                    {"role": "assistant", "content": ai_response}
+                ])
+            except Exception:
+                # 兼容旧接口
+                if hasattr(summary, 'update'):
+                    summary.update(user_message)
+                    summary.update(ai_response, role="assistant")
+                elif hasattr(summary, 'add_message'):
+                    summary.add_message("user", user_message)
+                    summary.add_message("assistant", ai_response)
+
+            # 把简短摘要写入 session['last_report']
+            last_report = session.get('last_report', {})
+            if hasattr(summary, 'get_summary'):
+                last_report['short_summary'] = summary.get_summary()
+            elif hasattr(summary, 'summary_text'):
+                last_report['short_summary'] = summary.summary_text
+            elif hasattr(summary, 'build_prompt'):
+                last_report['short_summary'] = summary.build_prompt()
+                
+            session['last_report'] = last_report
+            session.modified = True
+
+        except Exception as mem_e:
+            # 记忆错误不应阻塞主流程，仅记录日志
+            try:
+                app.logger.warning(f"Memory integration error (client.chat): {mem_e}")
+            except Exception:
+                pass
 
     # ---------------------------------------------------------
 
