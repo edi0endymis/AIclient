@@ -110,15 +110,13 @@ def ensure_memory_dirs():
         'conversation_dir': conversation_dir
     }
 
-# 在应用启动时调用
-with app.app_context():
-    dirs = ensure_memory_dirs()
-    print(f"确保目录存在: {dirs}")
 
-# 设置静态文件目录
+
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 if os.path.exists(static_dir):
-    app = Flask(__name__, static_folder=static_dir, template_folder='templates')
+    app = Flask(__name__, 
+               static_folder=static_dir,
+               template_folder='templates')
 else:
     app = Flask(__name__, template_folder='templates')
 
@@ -2628,7 +2626,33 @@ client_manager = ClientManager(os.path.join(app.config['DATA_DIR'], 'clients.jso
 app.client_manager = client_manager
 
 if __name__ == '__main__':
-    Config.init_dirs()  # 确保所有目录存在
+    # 确保所有目录存在
+    try:
+        # 主数据目录
+        data_dir = app.config['DATA_DIR']
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # 会话目录
+        session_dir = app.config['SESSION_FILE_DIR']
+        os.makedirs(session_dir, exist_ok=True)
+        
+        # 对话数据目录
+        conversation_dir = os.path.join(data_dir, 'conversations')
+        os.makedirs(conversation_dir, exist_ok=True)
+        app.config['CONVERSATION_DATA_DIR'] = conversation_dir
+        
+        # 内存存储目录
+        memory_dir = os.path.join(os.path.dirname(__file__), 'data_memory')
+        os.makedirs(memory_dir, exist_ok=True)
+        
+        print("目录初始化完成")
+    except Exception as e:
+        print(f"目录初始化失败: {e}")
+    
+    # 确保预设客户端存在
+    client_manager.ensure_preset_clients()
+    
+    # 运行应用
     app.run(host='0.0.0.0', port=5000, debug=False)
 
 
