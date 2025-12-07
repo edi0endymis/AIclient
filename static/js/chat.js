@@ -140,100 +140,70 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerButtons = document.querySelector('.header-buttons');
         if (!headerButtons) return;
         
-        // 移除旧的结束按钮（如果存在）
-        const oldBtn = document.getElementById('end-session-btn');
-        if (oldBtn) oldBtn.remove();
-        
-        // 创建新的结束按钮
-        const btn = document.createElement('button');
-        btn.id = 'end-session-btn';
-        btn.className = 'btn btn-primary';
-        btn.innerHTML = '<span style="margin-right: 5px;">📋</span>结束并查看WAI反馈';
-        btn.style.marginLeft = '8px';
-        btn.style.padding = '8px 16px';
-        btn.style.backgroundColor = '#4a6baf';
-        btn.style.color = 'white';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '4px';
-        btn.style.cursor = 'pointer';
-        
-        // 插入到合适的位置
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) {
-            exportBtn.parentNode.insertBefore(btn, exportBtn.nextSibling);
-        } else {
+        if (!document.getElementById('end-session-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'end-session-btn';
+            btn.className = 'btn btn-primary';
+            btn.innerHTML = '<span style="margin-right: 5px;">📋</span>结束并生成WAI评估';
+            btn.style.marginLeft = '8px';
             headerButtons.appendChild(btn);
-        }
 
-        btn.addEventListener('click', async () => {
-            if (!confirm('确定结束当前会话并生成WAI评估报告吗？')) return;
-            
-            // 显示加载提示
-            const loadingToast = showToast('正在生成WAI评估报告...', 'info');
-            
-            try {
-                // 步骤1：调用WAI评估API
-                const waiResponse = await fetch('/api/wai-feedback', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        mode: 'train',
-                        meta: {
-                            session_id: window.sessionId || 'unknown'
-                        }
-                    })
-                });
+            btn.addEventListener('click', async () => {
+                if (!confirm('确定结束当前会话并生成WAI评估报告吗？')) return;
                 
-                if (!waiResponse.ok) {
-                    const err = await waiResponse.json();
-                    throw new Error(err.error || 'WAI评估失败');
-                }
+                // 显示加载
+                const loadingToast = showToast('正在分析对话并生成评估...', 'info');
                 
-                const waiData = await waiResponse.json();
-                
-                // 步骤2：结束会话并获取基本报告信息
-                const endResponse = await fetch('/end-session', { 
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'} 
-                });
-                
-                if (!endResponse.ok) {
-                    const err = await endResponse.json();
-                    throw new Error(err.error || '结束会话失败');
-                }
-                
-                const endData = await endResponse.json();
-                
-                // 步骤3：合并数据并显示报告
-                const reportData = {
-                    ...endData.report,
-                    wai_feedback: waiData
-                };
-                
-                // 保存到session供导出使用
                 try {
-                    await fetch('/api/save-feedback', {
+                    // 1. 先调用WAI评估
+                    const waiResponse = await fetch('/api/wai-feedback', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ wai_feedback: waiData })
+                        body: JSON.stringify({ mode: 'train' })
                     });
-                } catch (e) {
-                    console.log('保存反馈失败，但不影响主流程:', e);
+                    
+                    if (!waiResponse.ok) {
+                        const err = await waiResponse.json();
+                        throw new Error(err.error || 'WAI评估失败');
+                    }
+                    
+                    const waiData = await waiResponse.json();
+                    
+                    // 2. 再结束会话获取基本信息
+                    const endResponse = await fetch('/end-session', { 
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'} 
+                    });
+                    
+                    let reportData = {};
+                    if (endResponse.ok) {
+                        const endData = await endResponse.json();
+                        reportData = endData.report || {};
+                    }
+                    
+                    // 3. 合并数据
+                    reportData.wai_feedback = waiData;
+                    
+                    // 4. 保存到session（用于PDF导出）
+                    try {
+                        await fetch('/api/save-feedback', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ wai_feedback: waiData })
+                        });
+                    } catch (e) {
+                        console.log('保存反馈失败，但不影响显示:', e);
+                    }
+                    
+                    // 5. 显示报告
+                    showReportModal(reportData);
+                    
+                } catch (error) {
+                    showToast('评估失败: ' + error.message, 'error');
+                    console.error('WAI评估错误:', error);
                 }
-                
-                // 显示报告
-                showReportModal(reportData);
-                
-                // 存储当前反馈供导出使用
-                window.currentWaiFeedback = waiData;
-                
-            } catch (error) {
-                showToast(error.message || '生成报告失败', 'error');
-                console.error('生成报告错误:', error);
-            }
-        });
+            });
+        }
     })();
 
     // 添加备用报告生成函数
