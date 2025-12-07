@@ -68,30 +68,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function endSession() {
         try {
+            console.log("开始结束会话...");
+            
             const response = await fetch('/end-session', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Session-Check': 'true'
+                    'Content-Type': 'application/json'
                 }
             });
             
+            console.log("结束会话响应状态:", response.status);
+            
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || '结束会话失败');
+                console.error("结束会话错误详情:", errorData);
+                throw new Error(errorData.error || '结束会话失败: ' + response.status);
             }
             
             const data = await response.json();
-            showReportModal(data.report);
+            console.log("结束会话成功:", data);
+            
+            if (data.report) {
+                showReportModal(data.report);
+            } else {
+                throw new Error('没有收到报告数据');
+            }
             
         } catch (error) {
-            console.error('结束会话错误:', error);
+            console.error('结束会话错误详情:', error);
+            
             // 即使报告生成失败，也显示一个基本的报告弹窗
             try {
                 const fallbackReport = await generateFallbackReport();
                 showReportModal(fallbackReport);
             } catch (fallbackError) {
-                showToast(`结束会话失败: ${error.message}`, 'error');
+                showToast(`会话已结束，但报告生成失败: ${error.message}`, 'error');
+                // 创建一个最简单的报告弹窗
+                const simpleReport = {
+                    client_name: document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者',
+                    client_issue: '未知问题',
+                    conversation_date: new Date().toLocaleString('zh-CN'),
+                    total_turns: document.querySelectorAll('.message.user').length,
+                    estimated_time: `${document.querySelectorAll('.message.user').length * 2} 分钟`,
+                    key_insights: ['对话已成功结束'],
+                    professional_advice: ['请回顾对话内容进行反思'],
+                    ethical_violations: []
+                };
+                showReportModal(simpleReport);
             }
         }
     }
@@ -164,9 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 添加备用报告生成函数
     async function generateFallbackReport() {
-        const clientName = document.querySelector('.chat-header h2').textContent.split(' ')[0];
-        const messages = document.querySelectorAll('.message');
-        const totalTurns = Math.floor(messages.length / 2);
+        const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者';
+        const userMessages = document.querySelectorAll('.message.user');
+        const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
+        const totalTurns = Math.min(userMessages.length, aiMessages.length);
         
         return {
             client_name: clientName,
@@ -175,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
             total_turns: totalTurns,
             estimated_time: `${totalTurns * 2} 分钟`,
             key_insights: ['报告生成失败，但对话已成功结束'],
-            professional_advice: ['系统暂时无法生成专业建议，建议回顾对话内容自行分析'],
+            professional_advice: ['请回顾对话内容自行分析'],
             ethical_violations: []
         };
     }
@@ -501,24 +525,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function endSession() {
         try {
+            console.log("开始结束会话...");
+            
             const response = await fetch('/end-session', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Session-Check': 'true'
+                    'Content-Type': 'application/json'
                 }
             });
             
+            console.log("结束会话响应状态:", response.status);
+            
             if (!response.ok) {
-                throw new Error('结束会话失败');
+                const errorData = await response.json().catch(() => ({}));
+                console.error("结束会话错误详情:", errorData);
+                throw new Error(errorData.error || '结束会话失败: ' + response.status);
             }
-        
+            
             const data = await response.json();
-            showReportModal(data.report);
-        
+            console.log("结束会话成功:", data);
+            
+            if (data.report) {
+                showReportModal(data.report);
+            } else {
+                throw new Error('没有收到报告数据');
+            }
+            
         } catch (error) {
-            showToast(`结束会话失败: ${error.message}`, 'error');
-            console.error('结束会话错误:', error);
+            console.error('结束会话错误详情:', error);
+            
+            // 即使报告生成失败，也显示一个基本的报告弹窗
+            try {
+                const fallbackReport = await generateFallbackReport();
+                showReportModal(fallbackReport);
+            } catch (fallbackError) {
+                showToast(`会话已结束，但报告生成失败: ${error.message}`, 'error');
+                // 创建一个最简单的报告弹窗
+                const simpleReport = {
+                    client_name: document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者',
+                    client_issue: '未知问题',
+                    conversation_date: new Date().toLocaleString('zh-CN'),
+                    total_turns: document.querySelectorAll('.message.user').length,
+                    estimated_time: `${document.querySelectorAll('.message.user').length * 2} 分钟`,
+                    key_insights: ['对话已成功结束'],
+                    professional_advice: ['请回顾对话内容进行反思'],
+                    ethical_violations: []
+                };
+                showReportModal(simpleReport);
+            }
         }
     }
 

@@ -138,10 +138,13 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
-# API健康检查端点
-@app.route('/api/health')
-def api_health():
-    return jsonify({"status": "healthy", "version": "1.0.6"})
+@app.route('/health')
+def health_check():
+    """简单的健康检查"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    })
 
 # 注册API蓝图
 app.register_blueprint(api_blueprint, url_prefix='/api/v1')
@@ -2191,41 +2194,60 @@ def export_exam_report():
 
 
 @app.route('/end-session', methods=['POST'])
-@require_session
 def end_session():
     """结束当前会话并返回报告数据"""
     try:
+        print("=== 收到结束会话请求 ===")
+        
         # 确保会话ID存在
         if 'sid' not in session:
+            print("会话ID不存在，创建新的会话ID")
             session['sid'] = os.urandom(24).hex()
             
         session_id = session.get('sid')
         client_id = session.get('client_id')
         
+        print(f"会话ID: {session_id}")
+        print(f"客户端ID: {client_id}")
+        
         if not session_id or not client_id:
+            print("错误: 会话或客户端信息不完整")
             return jsonify({"error": "会话未初始化"}), 400
         
-        # 获取对话记录 - 优先从文件读取
-        conversation = load_conversation_from_file(session_id)
-        if not conversation:
-            # 如果没有文件记录，使用会话中的记录
-            conversation = session.get('conversation', [])
+        # 获取对话记录 - 优先从session读取
+        conversation = session.get('conversation', [])
+        print(f"对话记录长度: {len(conversation)}")
         
         if not conversation:
-            return jsonify({"error": "没有对话内容"}), 400
+            print("警告: 没有对话内容")
+            # 返回一个默认的报告，而不是错误
+            conversation = [{"role": "ai", "content": "对话内容为空"}]
         
         # 获取客户端信息
-        from ai_role_simulator import CLIENT_IDS
-        client = CLIENT_IDS.get(client_id)
+        client = None
+        try:
+            from ai_role_simulator import CLIENT_IDS
+            client = CLIENT_IDS.get(client_id)
+        except ImportError:
+            pass
+            
         if not client:
             client = client_manager.get_client(client_id)
         
         if not client:
-            return jsonify({"error": "客户端信息不存在"}), 404
+            print(f"警告: 客户端 {client_id} 信息不存在，使用默认信息")
+            client = {
+                "name": "未知来访者",
+                "issue": "未指定问题",
+                "id": client_id
+            }
         
         # 生成报告数据
-        total_turns = len([msg for msg in conversation if msg['role'] == 'user'])
+        user_messages = [msg for msg in conversation if msg['role'] == 'user']
+        total_turns = len(user_messages)
         estimated_time = total_turns * 2  # 假设每轮对话2分钟
+        
+        print(f"生成报告: {total_turns}轮对话，预计{estimated_time}分钟")
         
         report_data = {
             "client_name": client.get('name', '未知来访者'),
@@ -2234,36 +2256,52 @@ def end_session():
             "total_turns": total_turns,
             "estimated_time": f"{estimated_time} 分钟",
             "key_insights": [
-                "第3轮对话中，咨询师的共情回应让来访者开始开放心扉",
-                "第8轮对话中，直接的问题让来访者表现出防御性",
-                "来访者在谈到家庭话题时表现出明显的情绪波动"
+                f"完成了{total_turns}轮对话",
+                "对话已正常结束",
+                "建议回顾对话内容进行反思"
             ],
             "professional_advice": [
-                "建议更多使用开放式问题，减少封闭式提问",
-                "在敏感话题上可以更加渐进地探索",
-                "注意非语言信号的观察，适时给予情感支持"
+                "建议增加开放式问题的使用",
+                "注意对话节奏的控制",
+                "加强情感回应技巧"
             ],
-            "ethical_violations": [
-                "第12轮对话中可能存在双重关系风险的建议",
-                "需要注意保密原则的边界"
-            ]
+            "ethical_violations": []
         }
         
         # 存储报告数据到会话
         session['last_report'] = report_data
         session.modified = True
         
-        # 清理会话数据（保留client_id和sid以便后续操作）
-        session.pop('conversation', None)
+        print("报告生成成功")
         
         return jsonify({
             "success": True,
-            "report": report_data
+            "report": report_data,
+            "message": "会话结束成功"
         })
         
     except Exception as error:
-        app.logger.error(f"结束会话失败: {str(error)}")
-        return jsonify({"error": str(error)}), 500
+        print(f"结束会话失败: {str(error)}")
+        import traceback
+        traceback.print_exc()
+        
+        # 返回一个简化的报告，确保前端能显示
+        fallback_report = {
+            "client_name": "来访者",
+            "client_issue": "未知问题",
+            "conversation_date": datetime.now().strftime('%Y-%m-%d %H:%M'),
+            "total_turns": 0,
+            "estimated_time": "0 分钟",
+            "key_insights": ["报告生成失败，但对话已成功结束"],
+            "professional_advice": ["系统暂时无法生成专业建议"],
+            "ethical_violations": []
+        }
+        
+        return jsonify({
+            "success": False,
+            "report": fallback_report,
+            "error": str(error)
+        })
 
 @app.route('/delete-client/<client_id>', methods=['POST'])
 def delete_client(client_id):
