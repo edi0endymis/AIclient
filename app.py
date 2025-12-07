@@ -2056,8 +2056,12 @@ def save_wai_feedback():
 def export_report():
     """导出训练模式报告"""
     try:
+        # 问题在这里：导入了pytz，而pytz中有session模块，覆盖了Flask的session
+        # 首先获取Flask的session，保存到局部变量避免冲突
+        flask_session = session  # 先保存Flask的session对象
+        
         # 获取报告数据
-        report_data = session.get('last_report') or {}
+        report_data = flask_session.get('last_report') or {}
         if not report_data:
             return jsonify({"error": "没有可导出的报告"}), 400
 
@@ -2066,11 +2070,15 @@ def export_report():
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
-        import pytz
+        from flask import send_file  # 确保导入send_file
         
-        # 设置北京时间
-        tz = pytz.timezone("Asia/Shanghai")
-        now_time = datetime.now(tz)
+        # 设置北京时间 - 使用import而不是在函数内部重命名
+        try:
+            import pytz
+            tz = pytz.timezone("Asia/Shanghai")
+            now_time = datetime.now(tz)
+        except:
+            now_time = datetime.now()  # 如果pytz不可用，使用默认时间
         
         # 创建PDF
         buffer = io.BytesIO()
@@ -2105,15 +2113,15 @@ def export_report():
         client_issue = report_data.get('client_issue', '未指定问题')
         total_turns = report_data.get('total_turns', 0)
         
-        basic_info = f"""
-        来访者: {client_name}
-        主要问题: {client_issue}
-        对话轮次: {total_turns} 轮
-        报告生成: {now_time.strftime('%Y-%m-%d %H:%M:%S')} (北京时间)
-        """
+        info_lines = [
+            f"来访者: {client_name}",
+            f"主要问题: {client_issue}",
+            f"对话轮次: {total_turns} 轮",
+            f"报告生成: {now_time.strftime('%Y-%m-%d %H:%M:%S')} (北京时间)"
+        ]
         
-        for line in basic_info.strip().split('\n'):
-            story.append(Paragraph(line.strip(), styles["Normal"]))
+        for line in info_lines:
+            story.append(Paragraph(line, styles["Normal"]))
             story.append(Spacer(1, 6))
         
         story.append(Spacer(1, 20))
@@ -2129,7 +2137,7 @@ def export_report():
             wai_scores = wai_data.get('wai_scores', {})
             exploration = wai_scores.get('exploration', '未评估')
             relationship = wai_scores.get('relationship', '未评估')
-            session = wai_scores.get('session', '未评估')
+            session_score = wai_scores.get('session', '未评估')  # 重命名为session_score避免冲突
             wai_total = wai_data.get('wai_total', 0)
             
             # 创建分数表格
@@ -2137,7 +2145,7 @@ def export_report():
                 ["评估维度", "得分 (1-5分)"],
                 ["探索能力", str(exploration)],
                 ["关系质量", str(relationship)],
-                ["会谈效果", str(session)],
+                ["会谈效果", str(session_score)],
                 ["总分", f"{wai_total}/15"]
             ]
             
@@ -2186,6 +2194,30 @@ def export_report():
                 for i, suggestion in enumerate(suggestions[:6], 1):
                     story.append(Paragraph(f"{i}. {suggestion}", styles["Normal"]))
                     story.append(Spacer(1, 5))
+            
+            story.append(Spacer(1, 20))
+        
+        # 关键洞察
+        if report_data.get('key_insights'):
+            story.append(Paragraph("<b>关键对话洞察</b>", styles["Heading2"]))
+            story.append(Spacer(1, 10))
+            for i, insight in enumerate(report_data.get('key_insights', [])[:5], 1):
+                story.append(Paragraph(f"{i}. {insight}", styles["Normal"]))
+                story.append(Spacer(1, 6))
+            story.append(Spacer(1, 20))
+        
+        # 伦理注意事项
+        if report_data.get('ethical_violations'):
+            story.append(Paragraph("<b>伦理注意事项</b>", styles["Heading2"]))
+            story.append(Spacer(1, 10))
+            for i, violation in enumerate(report_data.get('ethical_violations', []), 1):
+                story.append(Paragraph(f"{i}. {violation}", styles["Normal"]))
+                story.append(Spacer(1, 6))
+        
+        # 页脚
+        story.append(Spacer(1, 30))
+        story.append(Paragraph("--- 报告结束 ---", styles["Normal"]))
+        story.append(Paragraph("系统生成报告，仅供参考学习", styles["Normal"]))
         
         # 生成PDF
         doc.build(story)
@@ -2194,8 +2226,7 @@ def export_report():
         # 生成文件名
         filename = f"咨询报告_{client_name}_{now_time.strftime('%Y%m%d_%H%M')}.pdf"
         
-        # 返回PDF
-        from flask import send_file
+        # 返回PDF - 确保send_file已导入
         return send_file(
             buffer,
             as_attachment=True,
@@ -2204,25 +2235,31 @@ def export_report():
         )
         
     except Exception as e:
-        app.logger.error(f"PDF导出失败: {e}")
+        app.logger.error(f"PDF导出失败: {e}", exc_info=True)
         
-        # 错误处理
-        error_text = f"""
-        报告生成失败
-        错误: {str(e)}
-        时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        """
-        
-        buffer = io.BytesIO()
-        buffer.write(error_text.encode('utf-8'))
-        buffer.seek(0)
-        
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name="report_error.txt",
-            mimetype="text/plain"
-        )   
+        # 错误处理 - 这里也要确保send_file已导入
+        try:
+            error_text = f"""
+            报告生成失败
+            错误: {str(e)}
+            时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            """
+            
+            buffer = io.BytesIO()
+            buffer.write(error_text.encode('utf-8'))
+            buffer.seek(0)
+            
+            # 使用当前作用域的send_file
+            from flask import send_file as flask_send_file
+            return flask_send_file(
+                buffer,
+                as_attachment=True,
+                download_name="report_error.txt",
+                mimetype="text/plain"
+            )
+        except:
+            # 如果连错误报告都生成失败，返回简单JSON
+            return jsonify({"error": f"PDF导出失败: {str(e)}"}), 500
 
 @app.route('/api/export-exam-report', methods=['GET', 'POST'])
 @require_session
