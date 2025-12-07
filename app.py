@@ -14,26 +14,40 @@ import pickle
 from datetime import datetime
 from functools import wraps
 
-# ========== ReportLab 导入（注册中文字体）==========
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.fonts import addMapping
 
-try:
-    # 使用你的 ZTwyrh.ttc 字体文件
-    font_path = os.path.join(os.path.dirname(__file__), 'ZTwyrh.ttc')
-    
-    if os.path.exists(font_path):
-        # 注册字体，命名为 'ZTFont'
-        pdfmetrics.registerFont(TTFont('ZTFont', font_path))
-        print(f"✅ PDF系统: 已成功注册 ZTFont 字体，使用文件 {font_path}")
-    else:
-        print(f"❌ 错误: 字体文件不存在: {font_path}")
-        print("⚠️ PDF系统: 使用ReportLab内置默认字体（中文可能显示异常）")
+# 全局字体注册
+def init_pdf_fonts():
+    """初始化PDF字体"""
+    try:
+        font_path = os.path.join(os.path.dirname(__file__), 'ZTwyrh.ttc')
         
-except Exception as e:
-    print(f"❌ 字体注册失败: {e}")
-    print("⚠️ PDF系统: 使用ReportLab内置默认字体（中文可能显示异常）")
+        if os.path.exists(font_path):
+            # 检查是否已注册，避免重复注册
+            if 'ZTFont' not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont('ZTFont', font_path))
+                print(f"✅ PDF字体: 已成功注册 ZTFont")
+            
+            # 设置字体映射
+            addMapping('ZTFont', 0, 0, 'ZTFont')  # normal
+            addMapping('ZTFont', 1, 0, 'ZTFont')  # bold
+            addMapping('ZTFont', 0, 1, 'ZTFont')  # italic
+            addMapping('ZTFont', 1, 1, 'ZTFont')  # bold-italic
+            
+            return True
+        else:
+            print(f"❌ 错误: 字体文件不存在: {font_path}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ 字体注册失败: {e}")
+        return False
 
+# 初始化字体
+FONT_REGISTERED = init_pdf_fonts()
+import pytz
 from config import Config
 from openai import OpenAI
 from api.v1.client import api_blueprint
@@ -159,7 +173,7 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
-@app.route('/health')
+@app.route('/api/health', methods=['GET'])
 def health_check():
     """简单的健康检查"""
     return jsonify({
@@ -1985,12 +1999,40 @@ def wai_feedback():
         app.logger.error(f"WAI 评分失败: {str(error)}")
         return jsonify({"error": str(error)}), 500
 
+@app.route('/api/save-feedback', methods=['POST'])
+@require_session
+def save_wai_feedback():
+    """保存WAI反馈到session"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "无效数据"}), 400
+            
+        wai_feedback = data.get('wai_feedback')
+        if wai_feedback:
+            # 保存到session
+            session['last_feedback'] = wai_feedback
+            
+            # 更新last_report
+            report_data = session.get('last_report', {})
+            report_data['wai_feedback'] = wai_feedback
+            session['last_report'] = report_data
+            
+            session.modified = True
+            
+            return jsonify({"success": True})
+            
+        return jsonify({"error": "没有反馈数据"}), 400
+        
+    except Exception as e:
+        app.logger.error(f"保存反馈失败: {e}")
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/export-report', methods=['POST'])
+@app.route('/api/export-report', methods=['GET', 'POST'])
 @require_session
 def export_report():
     """
-    导出训练模式报告（完全修复版）- 不使用自定义字体
+    导出训练模式报告（修复版）- 使用中文字体
     """
     try:
         # 获取报告数据
@@ -1998,55 +2040,127 @@ def export_report():
         if not report_data:
             return jsonify({"error": "没有可导出的报告"}), 400
 
-        # 创建内存缓冲
-        buffer = io.BytesIO()
+        # 设置北京时间
+        import pytz
+        tz = pytz.timezone("Asia/Shanghai")
+        now_time = datetime.now(tz)
         
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
+        from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=A4, 
+            leftMargin=36, 
+            rightMargin=36, 
+            topMargin=36, 
+            bottomMargin=36,
+            title=f"心理咨询报告_{now_time.strftime('%Y%m%d')}"
+        )
 
+        # 创建样式
         styles = getSampleStyleSheet()
         
-        for style_name in ['Normal', 'Heading1', 'Heading2', 'Heading3', 'Title']:
-            if style_name in styles:
-                styles[style_name].fontName = 'ZTFont'
+        # 添加自定义样式（使用中文字体）
+        def create_chinese_style(name, parent, **kwargs):
+            style = ParagraphStyle(name, parent, **kwargs)
+            if FONT_REGISTERED:
+                style.fontName = 'ZTFont'
+            return style
         
+        # 标题样式
+        styles.add(create_chinese_style(
+            'ChineseTitle',
+            styles['Title'],
+            fontSize=20,
+            alignment=TA_CENTER,
+            spaceAfter=30
+        ))
+        
+        # 标题样式
+        styles.add(create_chinese_style(
+            'ChineseHeading1',
+            styles['Heading1'],
+            fontSize=16,
+            spaceBefore=12,
+            spaceAfter=6
+        ))
+        
+        styles.add(create_chinese_style(
+            'ChineseHeading2',
+            styles['Heading2'],
+            fontSize=14,
+            spaceBefore=10,
+            spaceAfter=6
+        ))
+        
+        # 正文样式
+        styles.add(create_chinese_style(
+            'ChineseNormal',
+            styles['Normal'],
+            fontSize=11,
+            leading=14
+        ))
+        
+        # 小字样式
+        styles.add(create_chinese_style(
+            'ChineseSmall',
+            styles['Normal'],
+            fontSize=9,
+            leading=12,
+            textColor=colors.grey
+        ))
+
         story = []
         
         # 标题
-        story.append(Paragraph("心理咨询训练反馈报告", styles["Title"]))
+        story.append(Paragraph("心理咨询训练反馈报告", styles["ChineseTitle"]))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"生成时间：{now_time.strftime('%Y年%m月%d日 %H:%M:%S')}（北京时间）", styles["ChineseSmall"]))
         story.append(Spacer(1, 20))
         
-        # 基本信息
-        story.append(Paragraph("<b>基本信息</b>", styles["Heading2"]))
+        # 基本信息表格
+        story.append(Paragraph("<b>基本信息</b>", styles["ChineseHeading1"]))
         story.append(Spacer(1, 10))
         
-        info_items = [
-            f"<b>来访者:</b> {report_data.get('client_name', '未知')}",
-            f"<b>主要问题:</b> {report_data.get('client_issue', '未指定')}",
-            f"<b>对话时间:</b> {report_data.get('conversation_date', '未记录')}",
-            f"<b>对话轮次:</b> {report_data.get('total_turns', 0)}",
-            f"<b>预计用时:</b> {report_data.get('estimated_time', '0分钟')}",
-            f"<b>报告生成:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        client_name = report_data.get('client_name', '未知来访者')
+        client_issue = report_data.get('client_issue', '未指定问题')
+        total_turns = report_data.get('total_turns', 0)
+        estimated_time = report_data.get('estimated_time', '0分钟')
+        
+        # 使用表格布局基本信息
+        info_data = [
+            ["来访者姓名", client_name],
+            ["主要问题", client_issue],
+            ["对话轮次", f"{total_turns} 轮"],
+            ["预计用时", estimated_time],
+            ["报告生成", now_time.strftime('%Y-%m-%d %H:%M:%S')]
         ]
         
-        for item in info_items:
-            story.append(Paragraph(item, styles["Normal"]))
-            story.append(Spacer(1, 6))
+        info_table = Table(info_data, colWidths=[100, 300])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'ZTFont' if FONT_REGISTERED else 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
         
-        story.append(Spacer(1, 20))
+        story.append(info_table)
+        story.append(Spacer(1, 25))
         
         # WAI评分部分
-        wai_data = report_data.get('wai_feedback') or {}
+        wai_data = report_data.get('wai_feedback') or session.get('last_feedback') or {}
         if wai_data:
-            story.append(Paragraph("<b>WAI工作联盟量表评估</b>", styles["Heading2"]))
+            story.append(Paragraph("<b>WAI工作联盟量表评估</b>", styles["ChineseHeading1"]))
             story.append(Spacer(1, 10))
             
-            # WAI分数
+            # WAI分数展示
             scores = wai_data.get('wai_scores', {})
             wai_total = wai_data.get('wai_total', 0)
             
@@ -2055,19 +2169,36 @@ def export_report():
             relationship = scores.get('relationship') or scores.get('task') or 'N/A'
             session_score = scores.get('session') or scores.get('goal') or 'N/A'
             
-            score_text = f"""
-            <b>探索能力维度:</b> {exploration}/5分<br/>
-            <b>关系评估维度:</b> {relationship}/5分<br/>
-            <b>会谈评价维度:</b> {session_score}/5分<br/>
-            <b>总分:</b> {wai_total}/15分
-            """
-            story.append(Paragraph(score_text, styles["Normal"]))
+            # WAI分数表格
+            wai_score_data = [
+                ["评估维度", "得分 (1-5分)", "说明"],
+                ["探索能力维度", str(exploration), "咨询师帮助来访者探索的能力"],
+                ["关系评估维度", str(relationship), "咨询关系的质量与连接感"],
+                ["会谈评价维度", str(session_score), "会谈整体效果的评价"]
+            ]
+            
+            wai_score_table = Table(wai_score_data, colWidths=[150, 80, 170])
+            wai_score_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'ZTFont' if FONT_REGISTERED else 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 11),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e3f2fd')),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            
+            story.append(wai_score_table)
+            story.append(Spacer(1, 8))
+            
+            # 总分显示
+            story.append(Paragraph(f"<b>总分：{wai_total}/15分</b>", styles["ChineseNormal"]))
             story.append(Spacer(1, 15))
             
-            # 评语
+            # 各维度评语
             comments = wai_data.get('item_comments') or wai_data.get('dimension_comments') or {}
             if comments:
-                story.append(Paragraph("<b>各维度评语</b>", styles["Heading3"]))
+                story.append(Paragraph("<b>各维度评语</b>", styles["ChineseHeading2"]))
                 story.append(Spacer(1, 8))
                 
                 for dim_key, comment in comments.items():
@@ -2080,17 +2211,18 @@ def export_report():
                             'relationship': '关系评估维度',
                             'session': '会谈评价维度'
                         }.get(dim_key, dim_key)
-                        story.append(Paragraph(f"<b>{dim_name}:</b> {comment}", styles["Normal"]))
+                        
+                        story.append(Paragraph(f"<b>{dim_name}：</b>{comment}", styles["ChineseNormal"]))
                         story.append(Spacer(1, 6))
             
             story.append(Spacer(1, 20))
         
         # 关键洞察
         if report_data.get('key_insights'):
-            story.append(Paragraph("<b>关键洞察</b>", styles["Heading2"]))
+            story.append(Paragraph("<b>关键对话洞察</b>", styles["ChineseHeading1"]))
             story.append(Spacer(1, 10))
-            for insight in report_data.get('key_insights', []):
-                story.append(Paragraph(f"• {insight}", styles["Normal"]))
+            for i, insight in enumerate(report_data.get('key_insights', [])[:5], 1):
+                story.append(Paragraph(f"{i}. {insight}", styles["ChineseNormal"]))
                 story.append(Spacer(1, 6))
             story.append(Spacer(1, 20))
         
@@ -2102,19 +2234,32 @@ def export_report():
             all_suggestions.extend(report_data.get('professional_advice', []))
         
         if all_suggestions:
-            story.append(Paragraph("<b>专业建议</b>", styles["Heading2"]))
+            story.append(Paragraph("<b>专业改进建议</b>", styles["ChineseHeading1"]))
             story.append(Spacer(1, 10))
-            for i, suggestion in enumerate(all_suggestions[:10], 1):
-                story.append(Paragraph(f"{i}. {suggestion}", styles["Normal"]))
+            for i, suggestion in enumerate(all_suggestions[:8], 1):
+                story.append(Paragraph(f"{i}. {suggestion}", styles["ChineseNormal"]))
                 story.append(Spacer(1, 6))
             story.append(Spacer(1, 20))
+        
+        # 伦理注意事项
+        if report_data.get('ethical_violations'):
+            story.append(Paragraph("<b>伦理注意事项</b>", styles["ChineseHeading1"]))
+            story.append(Spacer(1, 10))
+            for i, violation in enumerate(report_data.get('ethical_violations', []), 1):
+                story.append(Paragraph(f"{i}. {violation}", styles["ChineseNormal"]))
+                story.append(Spacer(1, 6))
+        
+        # 页脚
+        story.append(Spacer(1, 30))
+        story.append(Paragraph("--- 报告结束 ---", styles["ChineseSmall"]))
+        story.append(Paragraph("系统生成报告，仅供参考学习", styles["ChineseSmall"]))
         
         # 生成PDF
         doc.build(story)
         buffer.seek(0)
         
         # 生成文件名
-        filename = f"心理咨询报告_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"心理咨询报告_{client_name}_{now_time.strftime('%Y%m%d_%H%M%S')}.pdf"
         
         # 返回PDF文件
         from flask import send_file
@@ -2126,19 +2271,19 @@ def export_report():
         )
         
     except Exception as e:
-        # 如果PDF生成失败，返回文本文件
-        app.logger.error(f"PDF导出失败: {e}")
+        app.logger.error(f"PDF导出失败: {e}", exc_info=True)
         
+        # 如果PDF生成失败，返回错误信息
         error_text = f"""
         心理咨询报告生成失败
         错误信息: {str(e)}
-        时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
+        时间（北京时间）: {datetime.now(pytz.timezone("Asia/Shanghai")).strftime('%Y-%m-%d %H:%M:%S')}
+        
         请检查：
-        1. 确保有完整的对话记录
+        1. 确保对话记录完整
         2. 确保WAI评估已完成
-        3. 联系系统管理员
-
+        3. 确保中文字体文件（ZTwyrh.ttc）存在
+        
         原始数据:
         {json.dumps(session.get('last_report', {}), ensure_ascii=False, indent=2)}
         """
@@ -2154,7 +2299,7 @@ def export_report():
             mimetype="text/plain"
         )
 
-@app.route('/api/export-exam-report', methods=['POST'])
+@app.route('/api/export-exam-report', methods=['GET', 'POST'])
 @require_session
 def export_exam_report():
     """
