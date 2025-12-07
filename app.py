@@ -10,7 +10,43 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 from datetime import datetime
 import pytz
-pdfmetrics.registerFont(TTFont('ZTFont', 'ZTwyrh.ttc'))
+
+# ========== 修改字体注册部分（添加容错）==========
+try:
+    # 尝试加载字体，如果失败使用默认字体
+    font_paths = [
+        'ZTwyrh.ttc',
+        os.path.join(os.path.dirname(__file__), 'ZTwyrh.ttc'),
+        '/mnt/data/ZTwyrh.ttc',  # Render部署可能的位置
+        '/app/ZTwyrh.ttc'
+    ]
+    
+    font_loaded = False
+    for font_path in font_paths:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont('ZTFont', font_path))
+                print(f"✅ 字体注册成功: {font_path}")
+                font_loaded = True
+                break
+            except Exception as font_error:
+                print(f"⚠️ 字体注册失败 {font_path}: {font_error}")
+    
+    if not font_loaded:
+        print("⚠️ 使用默认字体（Helvetica）")
+        # 注册默认字体
+        pdfmetrics.registerFont(TTFont('DefaultFont', 'Helvetica-Bold'))
+        pdfmetrics.registerFont(TTFont('DefaultFontNormal', 'Helvetica'))
+        
+except Exception as e:
+    print(f"❌ 字体系统初始化失败: {e}")
+    # 确保PDFmetrics有默认字体
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    pdfmetrics.registerFont(TTFont('Helvetica', 'Helvetica'))
+    pdfmetrics.registerFont(TTFont('Helvetica-Bold', 'Helvetica-Bold'))
+# ========== 字体注册结束 ==========
+
 from pathlib import Path
 
 import json
@@ -1755,80 +1791,214 @@ def analyze_conversation(conversation, client):
     }
 
 
-# ---------- WAI 评分：后端实现（新增） ----------
-import json
-try:
-    # optional: 读取 docx 的库（非必须）
-    from docx import Document
-except Exception:
-    Document = None
-
+# ---------- WAI 评分：后端实现（修正版，保持原函数名） ----------
 def load_wai_text():
     """
-    尝试加载项目根目录下的 WAI.docx（或 WAI.txt），
-    如不可用则返回一个简短的内置说明（fallback）。
+    直接返回你的WAI维度文本，不使用外部文件
     """
-    try:
-        base_paths = [
-            os.path.join(app.root_path, 'WAI.docx'),
-            os.path.join(app.root_path, 'WAI.txt'),
-            os.path.join(os.getcwd(), 'WAI.docx'),
-            '/mnt/data/WAI.docx'
-        ]
-        for p in base_paths:
-            if p and os.path.exists(p):
-                if p.lower().endswith('.docx') and Document is not None:
-                    doc = Document(p)
-                    return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-                else:
-                    with open(p, 'r', encoding='utf-8', errors='ignore') as f:
-                        return f.read()
-    except Exception as e:
-        app.logger.warning(f"加载 WAI 文档失败: {e}")
-    # fallback brief description (will still work)
-    return (
-        "WAI（Working Alliance Inventory）包含几个维度："
-        "关系亲密度(Alliance/Bond)、目标一致性(Goals)、任务一致性(Tasks)等。"
-        "要求对咨询师在对话中的行为进行评分（1-5），并给出简短理由与改进建议。"
-    )
+    return """
+**（一）探索能力维度：咨询师帮助来访者探索思想、情感和行为的能力**
+1.对当前治疗活动有用性的一致认同
+2.咨询师对治疗目标的共同理解
+3.咨询师澄清会谈目的
+4.咨询师对会谈目标不存在分歧
+5.咨询师对治疗目标不缺乏理解
+6.咨询师对来访者在治疗中的责任有一致认识
+7.共同认为治疗目标对来访者重要
+8.不会认为治疗内容与来访者当前关切无关
+9.一致认为治疗活动有助于来访者达成改变
+10.咨询师期望清晰
+11.共同致力于一致的目标
+12.咨询师对来访者需关注的问题有一致看法
+13.咨询师对如何改变有清晰认识
+14.咨询师对来访者真实问题有不同看法
+15.共同设定会谈目标
+16.咨询师对适合来访者的改变有共同理解
+17.治疗过程对来访者有意义
+18.来访者清楚治疗的预期结果
+19.来访者认为当前处理问题的方式正确
+
+**（二）关系评估维度：咨询关系的质量和连接感**
+1.关系中不存在不适感
+2.双方有良好的理解
+3.来访者不会对治疗内容感到困惑
+4.双方互相喜欢
+5.来访者感受到咨询师的真诚关心
+6.双方互相尊重
+7.来访者不会感到咨询师不诚实
+8.来访者对咨询师的能力有信心
+9.来访者感到被咨询师欣赏
+10.双方互相信任
+11.双方认为关系对来访者重要
+12.来访者未感到害怕被咨询师放弃
+13.来访者感到被尊重和关怀，即使行为不被认可
+
+**（三）会谈评价维度：对会谈整体效果的评价**
+1.对改善步骤的一致认同
+2.对会谈结果的关注
+3.认为咨询时间利用高效
+4.来访者对咨询活动不会感到挫败
+"""
 
 def make_wai_prompt(wai_text, conversation, mode='train', meta=None):
     """
-    构建给模型的 prompt。要求模型返回 **JSON** 格式如下：
-    {
-      "wai_scores": {"bond":4,"task":3,"goal":5},
-      "wai_total": 12,
-      "item_comments": {"bond":"...","task":"...","goal":"..."},
-      "suggestions": ["...","..."],
-      "brief_rationale": "..."
-    }
+    构建给模型的prompt - 保持原函数签名不变
     """
     convo_text = ""
-    for m in conversation:
-        role = m.get('role', '')
-        content = m.get('content', '')
-        convo_text += f"{role.upper()}: {content}\n"
+    for i, msg in enumerate(conversation, 1):
+        role = "咨询师" if msg.get('role') == 'user' else "来访者"
+        content = msg.get('content', '')
+        convo_text += f"【第{i}轮】{role}: {content}\n"
+    
+    prompt = f"""你是一位心理咨询督导专家，需要基于WAI工作联盟量表评估咨询师的表现。
 
-    meta_info = ""
-    if meta:
-        meta_info = "\n".join([f"{k}: {v}" for k, v in meta.items()])
+## WAI评估维度（共35个条目）：
+{wai_text}
 
-    instruction = (
-        "You are an expert clinical supervisor and psychotherapist trainer. "
-        "Using the WAI guidance below, evaluate the CONSULTANT/THERAPIST's performance in the conversation. "
-        "Output a JSON object only (no extra commentary) with these fields:\n"
-        " - wai_scores: an object with numeric scores 1-5 for 'bond', 'task', 'goal'\n"
-        " - wai_total: integer sum\n"
-        " - item_comments: short 1-2 sentence justification for each item\n"
-        " - suggestions: list of 3 brief actionable suggestions for the therapist\n"
-        " - brief_rationale: one-sentence overall rationale\n"
-        "If you cannot rate, return scores as null and explain in brief_rationale.\n\n"
-        f"WAI reference (use for guidance):\n{wai_text}\n\n"
-        f"Conversation (most recent last):\n{convo_text}\n\n"
-        f"Meta:\n{meta_info}\n\n"
-        "Return VALID JSON only. Use Chinese if the conversation is in Chinese; otherwise use English."
-    )
-    return instruction
+## 对话记录：
+{convo_text}
+
+## 评估要求：
+1. **三个维度评分**（每个维度1-5分，5分最佳）：
+   - 探索能力维度（1-19条）：评估咨询师帮助来访者探索的能力
+   - 关系评估维度（20-32条）：评估咨询关系的质量
+   - 会谈评价维度（33-35条）：评估会谈整体效果
+
+2. **具体建议**：针对每个维度，提出3条具体的改进建议
+
+3. **总体评价**：简要总结咨询师的优势和需要改进的地方
+
+## 请返回严格的JSON格式：
+{{
+  "wai_scores": {{
+    "exploration": 4,  // 探索能力维度得分（1-5）
+    "relationship": 4, // 关系评估维度得分（1-5）
+    "session": 3       // 会谈评价维度得分（1-5）
+  }},
+  "wai_total": 11,  // 总分（三个维度得分之和）
+  "item_comments": {{
+    "exploration": "咨询师在帮助来访者探索方面...",
+    "relationship": "咨询关系建立方面...",
+    "session": "会谈整体效果方面..."
+  }},
+  "suggestions": [
+    "针对探索能力的建议1...",
+    "针对探索能力的建议2...",
+    "针对关系建立的建议1...",
+    "针对关系建立的建议2...",
+    "针对会谈效果的建议1...",
+    "针对会谈效果的建议2..."
+  ],
+  "strengths": ["优势1", "优势2", "优势3"],
+  "improvements": ["需改进1", "需改进2", "需改进3"]
+}}
+
+请确保使用中文评估，评分基于对话中咨询师的实际表现。"""
+    
+    return prompt
+
+@app.route('/api/wai-feedback', methods=['POST'])
+@require_session
+def wai_feedback():
+    """
+    WAI 评分 API - 保持原函数名和基本结构
+    """
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        mode = payload.get('mode', 'train')
+        extra_meta = payload.get('meta', {})
+        
+        # 获取对话记录
+        session_id = session.get('sid')
+        conversation = load_conversation_from_file(session_id)
+        if not conversation:
+            conversation = session.get('conversation', [])
+
+        if not conversation:
+            return jsonify({"error": "没有对话内容"}), 400
+
+        # 读取 WAI 文本（使用修改后的函数）
+        wai_text = load_wai_text()
+        prompt = make_wai_prompt(wai_text, conversation, mode=mode, meta=extra_meta)
+
+        # 调用 OpenAI - 添加response_format确保返回JSON
+        messages = [
+            {"role": "system", "content": "你是一位严格但公正的心理咨询督导，根据WAI标准评估咨询师表现。"},
+            {"role": "user", "content": prompt}
+        ]
+
+        try:
+            resp = openai_client.chat.completions.create(
+                model=app.config.get('OPENAI_MODEL', 'gpt-4o'),
+                messages=messages,
+                max_tokens=1200,
+                temperature=0.3,
+                response_format={"type": "json_object"}  # 关键：确保返回JSON
+            )
+            text = resp.choices[0].message.content.strip()
+        except Exception as e:
+            app.logger.error(f"WAI 模型调用失败: {e}")
+            return jsonify({"error": "模型调用失败", "detail": str(e)}), 500
+
+        # 尝试解析 JSON
+        parsed = None
+        try:
+            parsed = json.loads(text)
+        except Exception as e:
+            # 尝试清理JSON
+            import re
+            # 查找第一个 { 和最后一个 }
+            match = re.search(r'(\{.*\})', text, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                except Exception:
+                    parsed = None
+        
+        # 构建返回结果 - 保持与前端兼容的结构
+        result = {
+            "raw_text": text
+        }
+        
+        if parsed and isinstance(parsed, dict):
+            # 确保有必要的字段
+            if 'wai_scores' not in parsed:
+                parsed['wai_scores'] = parsed.get('scores', {})
+            if 'wai_total' not in parsed:
+                scores = parsed.get('wai_scores', {})
+                total = sum(v for v in scores.values() if isinstance(v, (int, float)))
+                parsed['wai_total'] = total
+            if 'item_comments' not in parsed:
+                parsed['item_comments'] = parsed.get('dimension_comments', {})
+            
+            result.update(parsed)
+        else:
+            # 解析失败时的回退
+            result.update({
+                "wai_scores": {"bond": 3, "task": 3, "goal": 3},
+                "wai_total": 9,
+                "item_comments": {
+                    "bond": "评估失败，无法解析响应",
+                    "task": "评估失败，无法解析响应", 
+                    "goal": "评估失败，无法解析响应"
+                },
+                "suggestions": ["请重新尝试评估"],
+                "brief_rationale": "模型响应格式错误，请检查API配置"
+            })
+
+        # 保存到session
+        session['last_feedback'] = result
+        session['last_report'] = {
+            **session.get('last_report', {}),
+            'wai_feedback': result
+        }
+        session.modified = True
+
+        return jsonify(result)
+
+    except Exception as error:
+        app.logger.error(f"WAI 评分失败: {str(error)}")
+        return jsonify({"error": str(error)}), 500
 
 @app.route('/api/wai-feedback', methods=['POST'])
 @require_session
@@ -1927,8 +2097,7 @@ def wai_feedback():
 @require_session
 def export_report():
     """
-    导出训练模式报告（包含 WAI 评分），从 session['last_report'] 读取
-    若前端 POST 了 report_data，则使用 POST 的数据（优先）
+    导出训练模式报告 - 修复版，简化PDF生成
     """
     try:
         # 优先使用 POST 提交的数据（如果有）
@@ -1960,9 +2129,14 @@ def export_report():
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
 
         styles = getSampleStyleSheet()
-        styles["Normal"].fontName = "ZTFont"
-        styles["Heading1"].fontName = "ZTFont"
-        styles["Heading2"].fontName = "ZTFont"
+        
+        # 简化：使用默认字体，不依赖自定义字体
+        try:
+            styles["Normal"].fontName = "Helvetica"
+            styles["Heading1"].fontName = "Helvetica-Bold"
+            styles["Heading2"].fontName = "Helvetica-Bold"
+        except:
+            pass  # 如果字体设置失败，使用默认
 
         story = []
 
@@ -1982,98 +2156,124 @@ def export_report():
         story.append(Paragraph(f"预计用时: {report_data.get('estimated_time', '')}", styles["Normal"]))
         story.append(Spacer(1, 12))
 
-        # 关键洞察
-        story.append(Paragraph("<b>关键洞察（Key Insights）</b>", styles["Heading2"]))
-        story.append(Spacer(1, 6))
-        for insight in report_data.get('key_insights', []):
-            story.append(Paragraph(f"- {insight}", styles["Normal"]))
-            story.append(Spacer(1, 4))
-        story.append(Spacer(1, 8))
-
-        # 专业建议
-        story.append(Paragraph("<b>专业建议（Professional Advice）</b>", styles["Heading2"]))
-        story.append(Spacer(1, 6))
-        for suggestion in report_data.get('professional_advice', []):
-            story.append(Paragraph(f"- {suggestion}", styles["Normal"]))
-            story.append(Spacer(1, 4))
-        story.append(Spacer(1, 10))
-
-        # 如果有 WAI 评分，则加入表格化的量表展示
+        # 如果有 WAI 评分，显示WAI部分
         wai = report_data.get('wai_feedback') or session.get('last_feedback')
         if wai:
             story.append(Paragraph("<b>WAI 评分（Working Alliance Inventory）</b>", styles["Heading2"]))
             story.append(Spacer(1, 6))
 
-            # 简要分数（Bond / Task / Goal / Total）
+            # 显示分数
             scores = wai.get('wai_scores') if isinstance(wai.get('wai_scores'), dict) else {}
             wai_total = wai.get('wai_total', wai.get('total') or '无')
-            story.append(Paragraph(f"Bond: {scores.get('bond', '无')}    Task: {scores.get('task', '无')}    Goal: {scores.get('goal', '无')}    总分: {wai_total}", styles["Normal"]))
+            
+            # 使用通用维度名兼容新旧格式
+            bond = scores.get('bond') or scores.get('relationship') or scores.get('exploration') or '无'
+            task = scores.get('task') or scores.get('session') or '无'
+            goal = scores.get('goal') or '无'
+            
+            score_text = f"关系维度: {bond}/5    任务维度: {task}/5    目标维度: {goal}/5    总分: {wai_total}/15"
+            story.append(Paragraph(score_text, styles["Normal"]))
             story.append(Spacer(1, 8))
 
-            # 构造表格：如果有 item-level 数据则尽量展示
-            # table header
-            table_data = [["条目 (Question)", "得分 (Score)", "评语 (Comment)"]]
-
-            # item_scores 或 item_comments：先尝试 item_comments（WAI 后端一般返回 item_comments）
+            # 显示评语
             item_comments = wai.get('item_comments') or {}
-            item_scores = wai.get('item_scores') or {}
-
-            # 如果 item_comments 是 dict，按 key 列表显示
-            if isinstance(item_comments, dict) and len(item_comments) > 0:
-                for k, v in item_comments.items():
-                    score_val = item_scores.get(k, "")
-                    table_data.append([str(k), str(score_val), str(v)])
-            else:
-                # 尝试把 short items（如果提供了 list）
-                items = wai.get('items') or wai.get('questions') or []
-                scores_list = wai.get('item_values') or []
-                comments_list = wai.get('item_comments_list') or []
-                if isinstance(items, list) and items:
-                    for idx, itm in enumerate(items):
-                        sc = scores_list[idx] if idx < len(scores_list) else ""
-                        cm = comments_list[idx] if idx < len(comments_list) else ""
-                        table_data.append([str(itm), str(sc), str(cm)])
-                else:
-                    # fallback: 把 brief_rationale / suggestions / raw_text 显示为单行
-                    brief = wai.get('brief_rationale') or wai.get('brief', '')
-                    if brief:
-                        table_data.append(["总评理由", "", str(brief)])
-                    # suggestions as separate rows
-                    suggestions = wai.get('suggestions') or []
-                    for s in suggestions:
-                        table_data.append(["建议", "", str(s)])
-
-            # 创建表格并添加样式
-            t = Table(table_data, colWidths=[220, 80, 200])
-            t.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'ZTFont'),
-                ('ALIGN', (1, 0), (1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')),
-                ('LEFTPADDING', (0,0), (-1,-1), 6),
-                ('RIGHTPADDING', (0,0), (-1,-1), 6),
-            ]))
-            story.append(t)
+            if item_comments:
+                story.append(Paragraph("<b>维度评语</b>", styles["Heading3"]))
+                story.append(Spacer(1, 6))
+                
+                for dim, comment in item_comments.items():
+                    if isinstance(comment, str) and comment.strip():
+                        dim_name = {
+                            'bond': '关系维度',
+                            'task': '任务维度', 
+                            'goal': '目标维度',
+                            'exploration': '探索能力维度',
+                            'relationship': '关系评估维度',
+                            'session': '会谈评价维度'
+                        }.get(dim, dim)
+                        story.append(Paragraph(f"<b>{dim_name}:</b> {comment}", styles["Normal"]))
+                        story.append(Spacer(1, 4))
+            
             story.append(Spacer(1, 12))
 
+        # 关键洞察
+        key_insights = report_data.get('key_insights', [])
+        if key_insights:
+            story.append(Paragraph("<b>关键洞察（Key Insights）</b>", styles["Heading2"]))
+            story.append(Spacer(1, 6))
+            for insight in key_insights[:10]:  # 限制数量
+                story.append(Paragraph(f"- {insight}", styles["Normal"]))
+                story.append(Spacer(1, 4))
+            story.append(Spacer(1, 8))
+
+        # 专业建议 - 合并WAI建议和报告建议
+        all_suggestions = []
+        
+        # 添加WAI建议
+        if wai and wai.get('suggestions'):
+            wai_suggestions = wai.get('suggestions', [])
+            if isinstance(wai_suggestions, list):
+                all_suggestions.extend(wai_suggestions)
+        
+        # 添加报告建议
+        report_suggestions = report_data.get('professional_advice', [])
+        if report_suggestions and isinstance(report_suggestions, list):
+            all_suggestions.extend(report_suggestions)
+        
+        if all_suggestions:
+            story.append(Paragraph("<b>专业建议（Professional Advice）</b>", styles["Heading2"]))
+            story.append(Spacer(1, 6))
+            for i, suggestion in enumerate(all_suggestions[:10], 1):
+                story.append(Paragraph(f"{i}. {suggestion}", styles["Normal"]))
+                story.append(Spacer(1, 4))
+            story.append(Spacer(1, 10))
+
         # 伦理注意事项（如果有）
-        if report_data.get('ethical_violations'):
+        ethical_violations = report_data.get('ethical_violations', [])
+        if ethical_violations:
             story.append(Paragraph("<b>伦理注意事项</b>", styles["Heading2"]))
             story.append(Spacer(1, 6))
-            for ev in report_data.get('ethical_violations', []):
+            for ev in ethical_violations[:5]:
                 story.append(Paragraph(f"- {ev}", styles["Normal"]))
                 story.append(Spacer(1, 4))
 
         # 结束并写入 PDF
-        doc.build(story)
+        try:
+            doc.build(story)
+        except Exception as build_error:
+            # 如果构建失败，返回简单文本
+            app.logger.error(f"PDF构建失败: {build_error}")
+            buffer = io.BytesIO()
+            simple_text = f"""
+训练反馈报告
+生成时间: {now_text}
+
+来访者: {report_data.get('client_name', '未知')}
+主要问题: {report_data.get('client_issue', '')}
+对话轮次: {report_data.get('total_turns', 0)}
+
+（由于PDF生成失败，显示文本版本）
+"""
+            buffer.write(simple_text.encode('utf-8'))
+            buffer.seek(0)
+            return send_file(buffer, as_attachment=True, 
+                           download_name=f"training_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt", 
+                           mimetype="text/plain")
 
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"training_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", mimetype="application/pdf")
+        return send_file(buffer, as_attachment=True, 
+                       download_name=f"training_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
+                       mimetype="application/pdf")
 
     except Exception as e:
-        current_app.logger.error(f"导出训练报告失败: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"导出训练报告失败: {e}")
+        # 返回错误文本
+        error_buffer = io.BytesIO()
+        error_buffer.write(f"报告导出失败: {str(e)}".encode('utf-8'))
+        error_buffer.seek(0)
+        return send_file(error_buffer, as_attachment=True, 
+                       download_name="export_error.txt", 
+                       mimetype="text/plain")
 
 @app.route('/api/export-exam-report', methods=['POST'])
 @require_session
