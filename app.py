@@ -1909,237 +1909,237 @@ def make_wai_prompt(wai_text, conversation, mode='train', meta=None):
     
     return prompt
 
-@app.route('/api/wai-feedback', methods=['POST'])
-@require_session
-def wai_feedback():
-    """
-    WAI 评分 API - 基于真实对话内容评估
-    """
-    try:
-        # 获取当前会话的对话记录
-        session_id = session.get('sid')
-        if not session_id:
-            return jsonify({"error": "会话未初始化"}), 400
+# @app.route('/api/wai-feedback', methods=['POST'])
+# @require_session
+# def wai_feedback():
+#     """
+#     WAI 评分 API - 基于真实对话内容评估
+#     """
+#     try:
+#         # 获取当前会话的对话记录
+#         session_id = session.get('sid')
+#         if not session_id:
+#             return jsonify({"error": "会话未初始化"}), 400
         
-        # 从session或文件获取对话
-        conversation = session.get('conversation', [])
-        if not conversation:
-            # 尝试从文件加载
-            conversation = load_conversation_from_file(session_id)
+#         # 从session或文件获取对话
+#         conversation = session.get('conversation', [])
+#         if not conversation:
+#             # 尝试从文件加载
+#             conversation = load_conversation_from_file(session_id)
         
-        if not conversation:
-            return jsonify({"error": "没有对话内容可评估"}), 400
+#         if not conversation:
+#             return jsonify({"error": "没有对话内容可评估"}), 400
         
-        # 获取客户端信息
-        client_id = session.get('client_id')
-        client = None
-        try:
-            from ai_role_simulator import CLIENT_IDS
-            client = CLIENT_IDS.get(client_id)
-        except ImportError:
-            pass
+#         # 获取客户端信息
+#         client_id = session.get('client_id')
+#         client = None
+#         try:
+#             from ai_role_simulator import CLIENT_IDS
+#             client = CLIENT_IDS.get(client_id)
+#         except ImportError:
+#             pass
             
-        if not client:
-            client = client_manager.get_client(client_id)
+#         if not client:
+#             client = client_manager.get_client(client_id)
         
-        # 构建对话文本
-        conversation_text = ""
-        for i, msg in enumerate(conversation, 1):
-            role = "咨询师" if msg.get('role') == 'user' else "来访者"
-            content = msg.get('content', '')
-            conversation_text += f"【第{i}轮】{role}: {content}\n\n"
+#         # 构建对话文本
+#         conversation_text = ""
+#         for i, msg in enumerate(conversation, 1):
+#             role = "咨询师" if msg.get('role') == 'user' else "来访者"
+#             content = msg.get('content', '')
+#             conversation_text += f"【第{i}轮】{role}: {content}\n\n"
         
-        # 构建真正的评估提示词
-        prompt = f"""你是一位心理咨询督导专家，请基于以下真实对话记录，使用WAI工作联盟量表对咨询师表现进行评估。
+#         # 构建真正的评估提示词
+#         prompt = f"""你是一位心理咨询督导专家，请基于以下真实对话记录，使用WAI工作联盟量表对咨询师表现进行评估。
 
-## 对话记录：
-{conversation_text}
+# ## 对话记录：
+# {conversation_text}
 
-## WAI评估维度：
-**探索能力维度（1-5分）**：咨询师帮助来访者探索思想、情感和行为的能力
-**关系评估维度（1-5分）**：咨询关系的质量和连接感
-**会谈评价维度（1-5分）**：对会谈整体效果的评价
+# ## WAI评估维度：
+# **探索能力维度（1-5分）**：咨询师帮助来访者探索思想、情感和行为的能力
+# **关系评估维度（1-5分）**：咨询关系的质量和连接感
+# **会谈评价维度（1-5分）**：对会谈整体效果的评价
 
-## 评估要求：
-1. **仔细分析对话内容**，基于咨询师的实际表现打分
-2. **每个维度给出具体评分理由**，引用对话中的例子
-3. **提供改进建议**，帮助咨询师提升技能
+# ## 评估要求：
+# 1. **仔细分析对话内容**，基于咨询师的实际表现打分
+# 2. **每个维度给出具体评分理由**，引用对话中的例子
+# 3. **提供改进建议**，帮助咨询师提升技能
 
-请返回以下JSON格式：
-{{
-  "wai_scores": {{
-    "exploration": 0,
-    "relationship": 0,
-    "session": 0
-  }},
-  "wai_total": 0,
-  "dimension_comments": {{
-    "exploration": "具体分析...",
-    "relationship": "具体分析...",
-    "session": "具体分析..."
-  }},
-  "suggestions": [
-    "具体建议1...",
-    "具体建议2...",
-    "具体建议3..."
-  ],
-  "strengths": [
-    "优势1...",
-    "优势2..."
-  ]
-}}
+# 请返回以下JSON格式：
+# {{
+#   "wai_scores": {{
+#     "exploration": 0,
+#     "relationship": 0,
+#     "session": 0
+#   }},
+#   "wai_total": 0,
+#   "dimension_comments": {{
+#     "exploration": "具体分析...",
+#     "relationship": "具体分析...",
+#     "session": "具体分析..."
+#   }},
+#   "suggestions": [
+#     "具体建议1...",
+#     "具体建议2...",
+#     "具体建议3..."
+#   ],
+#   "strengths": [
+#     "优势1...",
+#     "优势2..."
+#   ]
+# }}
 
-请确保评分基于对话实际内容，不要使用模板化回复。"""
+# 请确保评分基于对话实际内容，不要使用模板化回复。"""
         
-        # 调用OpenAI分析
-        messages = [
-            {"role": "system", "content": "你是专业的心理咨询督导，请根据WAI标准对咨询对话进行评估。"},
-            {"role": "user", "content": prompt}
-        ]
+#         # 调用OpenAI分析
+#         messages = [
+#             {"role": "system", "content": "你是专业的心理咨询督导，请根据WAI标准对咨询对话进行评估。"},
+#             {"role": "user", "content": prompt}
+#         ]
         
-        try:
-            response = openai_client.chat.completions.create(
-                model=app.config.get('OPENAI_MODEL', 'gpt-4'),
-                messages=messages,
-                max_tokens=1500,
-                temperature=0.3,
-                response_format={"type": "json_object"}
-            )
-            result_text = response.choices[0].message.content.strip()
-            result = json.loads(result_text)
-        except Exception as e:
-            app.logger.error(f"AI分析失败: {e}")
-            # 返回默认评估
-            result = {
-                "wai_scores": {"exploration": 3, "relationship": 3, "session": 3},
-                "wai_total": 9,
-                "dimension_comments": {
-                    "exploration": "评估失败，无法获取AI分析结果",
-                    "relationship": "评估失败，无法获取AI分析结果",
-                    "session": "评估失败，无法获取AI分析结果"
-                },
-                "suggestions": ["请检查API连接", "确保有足够的对话内容"],
-                "strengths": ["对话已正常进行"]
-            }
+#         try:
+#             response = openai_client.chat.completions.create(
+#                 model=app.config.get('OPENAI_MODEL', 'gpt-4'),
+#                 messages=messages,
+#                 max_tokens=1500,
+#                 temperature=0.3,
+#                 response_format={"type": "json_object"}
+#             )
+#             result_text = response.choices[0].message.content.strip()
+#             result = json.loads(result_text)
+#         except Exception as e:
+#             app.logger.error(f"AI分析失败: {e}")
+#             # 返回默认评估
+#             result = {
+#                 "wai_scores": {"exploration": 3, "relationship": 3, "session": 3},
+#                 "wai_total": 9,
+#                 "dimension_comments": {
+#                     "exploration": "评估失败，无法获取AI分析结果",
+#                     "relationship": "评估失败，无法获取AI分析结果",
+#                     "session": "评估失败，无法获取AI分析结果"
+#                 },
+#                 "suggestions": ["请检查API连接", "确保有足够的对话内容"],
+#                 "strengths": ["对话已正常进行"]
+#             }
         
-        # 保存结果
-        session['last_feedback'] = result
-        if 'last_report' not in session:
-            session['last_report'] = {}
-        session['last_report']['wai_feedback'] = result
-        session.modified = True
+#         # 保存结果
+#         session['last_feedback'] = result
+#         if 'last_report' not in session:
+#             session['last_report'] = {}
+#         session['last_report']['wai_feedback'] = result
+#         session.modified = True
         
-        return jsonify(result)
+#         return jsonify(result)
         
-    except Exception as error:
-        app.logger.error(f"WAI评估失败: {str(error)}")
-        return jsonify({"error": f"评估失败: {str(error)}"}), 500
+#     except Exception as error:
+#         app.logger.error(f"WAI评估失败: {str(error)}")
+#         return jsonify({"error": f"评估失败: {str(error)}"}), 500
 
-def generate_wai_assessment(conversation, client_info=None):
-    """
-    基于WAI量表生成完整的评估报告
-    包含36个条目的详细评分
-    """
+# def generate_wai_assessment(conversation, client_info=None):
+#     """
+#     基于WAI量表生成完整的评估报告
+#     包含36个条目的详细评分
+#     """
     
-    # WAI量表条目（简体中文版）
-    wai_items = {
-        "bond": [
-            "我和咨询师相处时觉得不自在",
-            "我相信咨询师喜欢我",
-            "我相信咨询师真诚地关心我的福祉",
-            "我觉得咨询师对我的感觉并不完全真诚",
-            "我觉得咨询师欣赏我",
-            "我和咨询师彼此相互信任",
-            "我和咨询师的关系对我非常重要",
-            "我感觉到假如我说了或做了不当的事，咨询师将不再与我咨询",
-            "我尊重咨询师，即使他所做的事情我并不赞同"
-        ],
-        "task": [
-            "咨询师和我同意我需做某些事以改善我的状况",
-            "咨询师和我同意我们咨询的目标",
-            "我感到有必要为咨询师澄清我们咨询的目的",
-            "我不同意咨询师认为我应从咨询中所得到的",
-            "我对我们在咨询中要达成的事感到疑虑",
-            "我很清楚同时也明白指出我在咨询中的责任",
-            "我明白咨询师期望我在每次咨询中做什么",
-            "咨询师和我都同意目前我所做的事是重要的",
-            "咨询师和我正朝向彼此同意的目标努力",
-            "咨询师和我对有益于我的改变方向已具有共识",
-            "咨询师和我共同设定了咨询的目标",
-            "咨询师要我做的事对我没多大意义"
-        ],
-        "goal": [
-            "我在咨询中所做的事情使我得到新的方式来看自己的问题",
-            "咨询师和我彼此相互了解",
-            "咨询师了解我的咨询目标",
-            "我对自己在咨询中所做的事感到困惑",
-            "咨询师并不了解我想要在咨询中获得什么",
-            "我明白我在咨询中的责任",
-            "这几次咨询的目标对我而言是重要的",
-            "我发现咨询师和我在咨询中所处理的事与我所关心的事无关",
-            "我在咨询中所做的事将有助于我达到自己所希望的改变",
-            "我自信咨询师有能力协助我",
-            "几次咨询结果，我较以前更清楚我可以如何改变",
-            "咨询师和我的问题的认定有不同看法",
-            "我对我在咨询中所做的事感到挫折",
-            "我不知道可期望从咨询结果中得到什么",
-            "我相信我们目前对我的问题的处理方向是对的"
-        ]
-    }
+#     # WAI量表条目（简体中文版）
+#     wai_items = {
+#         "bond": [
+#             "我和咨询师相处时觉得不自在",
+#             "我相信咨询师喜欢我",
+#             "我相信咨询师真诚地关心我的福祉",
+#             "我觉得咨询师对我的感觉并不完全真诚",
+#             "我觉得咨询师欣赏我",
+#             "我和咨询师彼此相互信任",
+#             "我和咨询师的关系对我非常重要",
+#             "我感觉到假如我说了或做了不当的事，咨询师将不再与我咨询",
+#             "我尊重咨询师，即使他所做的事情我并不赞同"
+#         ],
+#         "task": [
+#             "咨询师和我同意我需做某些事以改善我的状况",
+#             "咨询师和我同意我们咨询的目标",
+#             "我感到有必要为咨询师澄清我们咨询的目的",
+#             "我不同意咨询师认为我应从咨询中所得到的",
+#             "我对我们在咨询中要达成的事感到疑虑",
+#             "我很清楚同时也明白指出我在咨询中的责任",
+#             "我明白咨询师期望我在每次咨询中做什么",
+#             "咨询师和我都同意目前我所做的事是重要的",
+#             "咨询师和我正朝向彼此同意的目标努力",
+#             "咨询师和我对有益于我的改变方向已具有共识",
+#             "咨询师和我共同设定了咨询的目标",
+#             "咨询师要我做的事对我没多大意义"
+#         ],
+#         "goal": [
+#             "我在咨询中所做的事情使我得到新的方式来看自己的问题",
+#             "咨询师和我彼此相互了解",
+#             "咨询师了解我的咨询目标",
+#             "我对自己在咨询中所做的事感到困惑",
+#             "咨询师并不了解我想要在咨询中获得什么",
+#             "我明白我在咨询中的责任",
+#             "这几次咨询的目标对我而言是重要的",
+#             "我发现咨询师和我在咨询中所处理的事与我所关心的事无关",
+#             "我在咨询中所做的事将有助于我达到自己所希望的改变",
+#             "我自信咨询师有能力协助我",
+#             "几次咨询结果，我较以前更清楚我可以如何改变",
+#             "咨询师和我的问题的认定有不同看法",
+#             "我对我在咨询中所做的事感到挫折",
+#             "我不知道可期望从咨询结果中得到什么",
+#             "我相信我们目前对我的问题的处理方向是对的"
+#         ]
+#     }
     
-    # 构建对话文本用于分析
-    conversation_text = ""
-    for i, msg in enumerate(conversation, 1):
-        role = "咨询师" if msg.get('role') == 'user' else "来访者"
-        content = msg.get('content', '')
-        conversation_text += f"第{i}轮 - {role}: {content}\n\n"
+#     # 构建对话文本用于分析
+#     conversation_text = ""
+#     for i, msg in enumerate(conversation, 1):
+#         role = "咨询师" if msg.get('role') == 'user' else "来访者"
+#         content = msg.get('content', '')
+#         conversation_text += f"第{i}轮 - {role}: {content}\n\n"
     
-    # 构建评估提示
-    prompt = f"""你是一位专业的心理咨询督导，请基于WAI工作联盟量表对以下咨询对话进行评估。
+#     # 构建评估提示
+#     prompt = f"""你是一位专业的心理咨询督导，请基于WAI工作联盟量表对以下咨询对话进行评估。
     
-## 对话记录：
-{conversation_text[:3000]}  # 限制长度
+# ## 对话记录：
+# {conversation_text[:3000]}  # 限制长度
 
-## WAI评估要求：
-请根据对话中咨询师的表现，对以下三个维度进行1-7分的评分（7分最高）：
+# ## WAI评估要求：
+# 请根据对话中咨询师的表现，对以下三个维度进行1-7分的评分（7分最高）：
 
-### 1. 情感联结 (Bond) - 共9个条目
-评估咨询师与来访者之间信任、关心、接纳的程度
+# ### 1. 情感联结 (Bond) - 共9个条目
+# 评估咨询师与来访者之间信任、关心、接纳的程度
 
-### 2. 任务合作 (Task) - 共12个条目
-评估咨询师与来访者对治疗任务的一致性
+# ### 2. 任务合作 (Task) - 共12个条目
+# 评估咨询师与来访者对治疗任务的一致性
 
-### 3. 目标一致 (Goal) - 共15个条目
-评估咨询师与来访者对治疗目标的一致性
+# ### 3. 目标一致 (Goal) - 共15个条目
+# 评估咨询师与来访者对治疗目标的一致性
 
-## 具体评分方法：
-- 7分：完全符合，始终表现优秀
-- 6分：经常符合，表现良好
-- 5分：有时符合，表现尚可
-- 4分：中等水平，部分符合
-- 3分：有时不符合，需要改进
-- 2分：经常不符合，问题明显
-- 1分：完全不符合，严重问题
+# ## 具体评分方法：
+# - 7分：完全符合，始终表现优秀
+# - 6分：经常符合，表现良好
+# - 5分：有时符合，表现尚可
+# - 4分：中等水平，部分符合
+# - 3分：有时不符合，需要改进
+# - 2分：经常不符合，问题明显
+# - 1分：完全不符合，严重问题
 
-## 请返回以下JSON格式：
-{{
-  "wai_dimension_scores": {{
-    "bond": {{"score": 5, "items": [条目评分列表...]}},
-    "task": {{"score": 5, "items": [条目评分列表...]}},
-    "goal": {{"score": 5, "items": [条目评分列表...]}}
-  }},
-  "wai_total": 15,
-  "dimension_analysis": {{
-    "bond": "具体分析文字...",
-    "task": "具体分析文字...", 
-    "goal": "具体分析文字..."
-  }},
-  "strengths": ["优势1", "优势2", "优势3"],
-  "improvement_suggestions": ["建议1", "建议2", "建议3", "建议4", "建议5"],
-  "overall_assessment": "总体评价..."
-}}"""
+# ## 请返回以下JSON格式：
+# {{
+#   "wai_dimension_scores": {{
+#     "bond": {{"score": 5, "items": [条目评分列表...]}},
+#     "task": {{"score": 5, "items": [条目评分列表...]}},
+#     "goal": {{"score": 5, "items": [条目评分列表...]}}
+#   }},
+#   "wai_total": 15,
+#   "dimension_analysis": {{
+#     "bond": "具体分析文字...",
+#     "task": "具体分析文字...", 
+#     "goal": "具体分析文字..."
+#   }},
+#   "strengths": ["优势1", "优势2", "优势3"],
+#   "improvement_suggestions": ["建议1", "建议2", "建议3", "建议4", "建议5"],
+#   "overall_assessment": "总体评价..."
+# }}"""
 
-    return prompt
+#     return prompt
 
 @app.route('/api/wai-comprehensive', methods=['POST'])
 @require_session
