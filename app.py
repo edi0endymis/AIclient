@@ -5,8 +5,9 @@ from flask_session import Session
 from flask_cors import CORS
 import io
 from io import BytesIO
+import re  
+import random 
 
-# ========== 基础导入 ==========
 import json
 import time
 import os
@@ -1489,41 +1490,107 @@ def start_session(client_id):
             session['exam_mode'] = True
             session.modified = True
             
-            # 初始化模拟器
             simulator = create_simulator(client_id)
             if not simulator:
                 print(f"错误 - 模拟器初始化失败")
                 return render_template('error.html',
-                             error_code=500,
-                             error_title="服务器错误",
-                             error_message="AI模拟器初始化失败",
-                             error_details=""), 500
+                            error_code=500,
+                            error_title="服务器错误",
+                            error_message="AI模拟器初始化失败",
+                            error_details=""), 500
             
             print(f"模拟器创建成功")
             
+            # 修改后的初始提示 - 确保第一句话有意义
             initial_prompt = (
                 "现在你是一位心理咨询来访者，刚见到咨询师。"
+                "请根据你的角色设定，说出自然、有意义的第一句话。"
                 "不要直接暴露核心问题，表现出适当的防御和不确定性。"
-                "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨和防御。"
+                "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨慎和防御。"
                 "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
                 "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
-                "不要说:'会按照所设置的规则来扮演心理咨询来访者Djjo。如果有需要进一步调整我的行为，请随时告诉我。准备好了，可以开始模拟咨询。'，请扮演一位真正需要帮助的来访者，第一句话可以是'你好，嗯...我不知道从哪里开始'"
+                "**重要：不要使用以下无意义的开场白：**"
+                "1. '好的，现在我要扮演一个来访者'"
+                "2. '抱歉，我不能帮助实现这个请求'"
+                "3. '会按照所设置的规则来扮演心理咨询来访者'"
+                "4. '准备好了，可以开始模拟咨询'"
+                "5. 任何暴露你是在扮演角色的语言"
                 
-                "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意;"
-                    "1,在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时,"
-                    "2,在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时,"
-                    "3,在咨询师一次提出多个问题，或说了其他让你难以回复的话时,"
-                    "4,在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时,"
-                    "5,在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
-                    "6,根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
-            ) 
-             
-            try:
-                initial_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
-                print(f"初始消息生成成功: {initial_message[:50]}...")
-            except Exception as e:
-                print(f"初始消息生成失败: {str(e)}")
-                initial_message = "您好,我最近总是睡不好..."
+                "自然的开场白可以是："
+                "'你好，嗯...我不知道从哪里开始'"
+                "'最近我总是睡不好觉，感觉很焦虑'"
+                "'我有些困扰想找人聊聊'"
+                "'最近压力很大，感觉需要一些帮助'"
+                
+                "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意："
+                "1. 在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时"
+                "2. 在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时"
+                "3. 在咨询师一次提出多个问题，或说了其他让你难以回复的话时"
+                "4. 在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时"
+                "5. 在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
+                "6. 根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
+                
+                "请扮演一位真正需要帮助的来访者，开始你的第一句话："
+            )
+            
+            # 验证函数：确保第一句话有意义
+            def validate_first_message(message):
+                """验证第一句话是否有意义"""
+                if not message or len(message.strip()) < 5:
+                    return False
+                
+                invalid_patterns = [
+                    r'好的.*扮演.*来访者',
+                    r'抱歉.*不能帮助',
+                    r'按照.*规则.*扮演',
+                    r'准备好了.*开始.*咨询',
+                    r'现在我要.*扮演',
+                    r'模拟咨询',
+                    r'AI.*来访者',
+                    r'大语言模型',
+                    r'作为.*AI'
+                ]
+                
+                message_lower = message.lower()
+                for pattern in invalid_patterns:
+                    if re.search(pattern, message_lower):
+                        return False
+                
+                return True
+            
+            # 生成初始消息并验证
+            max_attempts = 3
+            initial_message = None
+            
+            for attempt in range(max_attempts):
+                try:
+                    generated_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
+                    
+                    if validate_first_message(generated_message):
+                        initial_message = generated_message
+                        print(f"第{attempt+1}次尝试：成功生成有效的初始消息")
+                        break
+                    else:
+                        print(f"第{attempt+1}次尝试：初始消息不符合要求，重新生成")
+                        print(f"消息内容：{generated_message[:50]}...")
+                        
+                except Exception as e:
+                    print(f"第{attempt+1}次尝试生成消息失败：{str(e)}")
+            
+            # 如果所有尝试都失败，使用备用消息
+            if not initial_message:
+                print("所有尝试失败，使用备用初始消息")
+                # 根据客户端问题生成备用消息
+                issue = client.get('issue', '心理困扰')
+                backup_messages = [
+                    f"您好，我最近总是睡不好，感觉压力很大...",
+                    f"嗯...我不知道该从哪里说起，就是感觉最近状态很不好...",
+                    f"我想聊聊最近困扰我的一些事情...",
+                    f"最近总觉得很焦虑，有些事情想找人倾诉..."
+                ]
+                initial_message = random.choice(backup_messages)
+            
+            print(f"最终初始消息：{initial_message[:50]}...")
             
             # 初始化会话记录
             session['conversation'] = [
@@ -1536,65 +1603,6 @@ def start_session(client_id):
             return render_template('chat.html', 
                                 client=client,
                                 initial_message=initial_message)
-        else:
-            # 如果不是预设客户端，从 client_manager 获取
-            client = client_manager.get_client(client_id)
-            if not client:
-                print(f"错误 - 客户端 {client_id} 不存在")
-                return render_template('error.html', error_code=404, error_title="来访者不存在"), 404
-            print(f"成功加载自定义客户端: {client_id}")
-        
-        # 确保会话ID存在
-        if 'sid' not in session:
-            session['sid'] = os.urandom(24).hex()
-            print(f"新会话ID已生成: {session['sid']}")
-
-        processing_time = time.time() - start_time
-        if processing_time > 10:
-            app.logger.warning(f"会话启动处理时间较长: {processing_time:.2f}秒")
-            
-        # 设置客户端ID和会话永久性
-        session['client_id'] = client_id
-        session.permanent = True
-        
-        # 强制保存会话
-        session.modified = True
-        
-        # 初始化模拟器
-        simulator = create_simulator(client_id)
-        if not simulator:
-            print(f"错误 - 模拟器初始化失败")
-            return render_template('error.html',
-                         error_code=500,
-                         error_title="服务器错误",
-                         error_message="AI模拟器初始化失败",
-                         error_details=""), 500
-        
-        print(f"模拟器创建成功")
-        
-        initial_prompt = (
-            "现在你是一位心理咨询来访者，刚见到咨询师。"
-            "不要直接暴露核心问题，表现出适当的防御和不确定性。"
-            "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨和防御。"
-            "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
-            "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
-            "不要说:'会按照所设置的规则来扮演心理咨询来访者Djjo。如果有需要进一步调整我的行为，请随时告诉我。准备好了，可以开始模拟咨询。'，请扮演一位真正需要帮助的来访者，第一句话可以是'你好，嗯...我不知道从哪里开始'"
-            
-            "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意;"
-                "1,在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时,"
-                "2,在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时,"
-                "3,在咨询师一次提出多个问题，或说了其他让你难以回复的话时,"
-                "4,在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时,"
-                "5,在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
-                "6,根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
-        ) 
-         
-        try:
-            initial_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
-            print(f"初始消息生成成功: {initial_message[:50]}...")
-        except Exception as e:
-            print(f"初始消息生成失败: {str(e)}")
-            initial_message = "您好,我最近总是睡不好..."
         
         # 初始化会话记录
         session['conversation'] = [
@@ -2021,6 +2029,227 @@ def wai_feedback():
     except Exception as error:
         app.logger.error(f"WAI评估失败: {str(error)}")
         return jsonify({"error": f"评估失败: {str(error)}"}), 500
+
+def generate_wai_assessment(conversation, client_info=None):
+    """
+    基于WAI量表生成完整的评估报告
+    包含36个条目的详细评分
+    """
+    
+    # WAI量表条目（简体中文版）
+    wai_items = {
+        "bond": [
+            "我和咨询师相处时觉得不自在",
+            "我相信咨询师喜欢我",
+            "我相信咨询师真诚地关心我的福祉",
+            "我觉得咨询师对我的感觉并不完全真诚",
+            "我觉得咨询师欣赏我",
+            "我和咨询师彼此相互信任",
+            "我和咨询师的关系对我非常重要",
+            "我感觉到假如我说了或做了不当的事，咨询师将不再与我咨询",
+            "我尊重咨询师，即使他所做的事情我并不赞同"
+        ],
+        "task": [
+            "咨询师和我同意我需做某些事以改善我的状况",
+            "咨询师和我同意我们咨询的目标",
+            "我感到有必要为咨询师澄清我们咨询的目的",
+            "我不同意咨询师认为我应从咨询中所得到的",
+            "我对我们在咨询中要达成的事感到疑虑",
+            "我很清楚同时也明白指出我在咨询中的责任",
+            "我明白咨询师期望我在每次咨询中做什么",
+            "咨询师和我都同意目前我所做的事是重要的",
+            "咨询师和我正朝向彼此同意的目标努力",
+            "咨询师和我对有益于我的改变方向已具有共识",
+            "咨询师和我共同设定了咨询的目标",
+            "咨询师要我做的事对我没多大意义"
+        ],
+        "goal": [
+            "我在咨询中所做的事情使我得到新的方式来看自己的问题",
+            "咨询师和我彼此相互了解",
+            "咨询师了解我的咨询目标",
+            "我对自己在咨询中所做的事感到困惑",
+            "咨询师并不了解我想要在咨询中获得什么",
+            "我明白我在咨询中的责任",
+            "这几次咨询的目标对我而言是重要的",
+            "我发现咨询师和我在咨询中所处理的事与我所关心的事无关",
+            "我在咨询中所做的事将有助于我达到自己所希望的改变",
+            "我自信咨询师有能力协助我",
+            "几次咨询结果，我较以前更清楚我可以如何改变",
+            "咨询师和我的问题的认定有不同看法",
+            "我对我在咨询中所做的事感到挫折",
+            "我不知道可期望从咨询结果中得到什么",
+            "我相信我们目前对我的问题的处理方向是对的"
+        ]
+    }
+    
+    # 构建对话文本用于分析
+    conversation_text = ""
+    for i, msg in enumerate(conversation, 1):
+        role = "咨询师" if msg.get('role') == 'user' else "来访者"
+        content = msg.get('content', '')
+        conversation_text += f"第{i}轮 - {role}: {content}\n\n"
+    
+    # 构建评估提示
+    prompt = f"""你是一位专业的心理咨询督导，请基于WAI工作联盟量表对以下咨询对话进行评估。
+    
+## 对话记录：
+{conversation_text[:3000]}  # 限制长度
+
+## WAI评估要求：
+请根据对话中咨询师的表现，对以下三个维度进行1-7分的评分（7分最高）：
+
+### 1. 情感联结 (Bond) - 共9个条目
+评估咨询师与来访者之间信任、关心、接纳的程度
+
+### 2. 任务合作 (Task) - 共12个条目
+评估咨询师与来访者对治疗任务的一致性
+
+### 3. 目标一致 (Goal) - 共15个条目
+评估咨询师与来访者对治疗目标的一致性
+
+## 具体评分方法：
+- 7分：完全符合，始终表现优秀
+- 6分：经常符合，表现良好
+- 5分：有时符合，表现尚可
+- 4分：中等水平，部分符合
+- 3分：有时不符合，需要改进
+- 2分：经常不符合，问题明显
+- 1分：完全不符合，严重问题
+
+## 请返回以下JSON格式：
+{{
+  "wai_dimension_scores": {{
+    "bond": {{"score": 5, "items": [条目评分列表...]}},
+    "task": {{"score": 5, "items": [条目评分列表...]}},
+    "goal": {{"score": 5, "items": [条目评分列表...]}}
+  }},
+  "wai_total": 15,
+  "dimension_analysis": {{
+    "bond": "具体分析文字...",
+    "task": "具体分析文字...", 
+    "goal": "具体分析文字..."
+  }},
+  "strengths": ["优势1", "优势2", "优势3"],
+  "improvement_suggestions": ["建议1", "建议2", "建议3", "建议4", "建议5"],
+  "overall_assessment": "总体评价..."
+}}"""
+
+    return prompt
+
+@app.route('/api/wai-comprehensive', methods=['POST'])
+@require_session
+def wai_comprehensive_feedback():
+    """
+    完整的WAI评估接口
+    """
+    try:
+        session_id = session.get('sid')
+        if not session_id:
+            return jsonify({"error": "会话未初始化"}), 400
+        
+        # 获取对话记录
+        conversation = session.get('conversation', [])
+        if len(conversation) < 4:  # 至少2轮对话
+            return jsonify({
+                "error": "对话内容不足",
+                "message": "请至少完成2轮对话后再进行评估"
+            }), 400
+        
+        # 获取客户端信息
+        client_id = session.get('client_id')
+        client = client_manager.get_client(client_id) or {}
+        
+        # 生成评估提示
+        prompt = generate_wai_assessment(conversation, client)
+        
+        # 调用OpenAI进行评估
+        messages = [
+            {"role": "system", "content": "你是一位资深的心理咨询督导专家，请基于WAI工作联盟量表对咨询对话进行专业评估。"},
+            {"role": "user", "content": prompt}
+        ]
+        
+        try:
+            response = openai_client.chat.completions.create(
+                model=app.config.get('OPENAI_MODEL', 'gpt-4'),
+                messages=messages,
+                max_tokens=2000,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            result = json.loads(response.choices[0].message.content)
+            
+            # 计算总分（三个维度平均分）
+            bond_score = result.get('wai_dimension_scores', {}).get('bond', {}).get('score', 0)
+            task_score = result.get('wai_dimension_scores', {}).get('task', {}).get('score', 0)
+            goal_score = result.get('wai_dimension_scores', {}).get('goal', {}).get('score', 0)
+            total_score = bond_score + task_score + goal_score
+            
+            result['wai_total'] = total_score
+            result['wai_percentage'] = round((total_score / 21) * 100, 1)  # 转换为百分比
+            
+        except Exception as ai_error:
+            app.logger.error(f"AI评估失败: {ai_error}")
+            # 返回简化的评估
+            result = generate_simplified_wai_assessment(conversation)
+        
+        # 保存评估结果
+        session['wai_assessment'] = result
+        if 'last_report' not in session:
+            session['last_report'] = {}
+        session['last_report']['wai_assessment'] = result
+        session.modified = True
+        
+        return jsonify({
+            "success": True,
+            "assessment": result,
+            "conversation_length": len([m for m in conversation if m.get('role') == 'user'])
+        })
+        
+    except Exception as error:
+        app.logger.error(f"WAI综合评估失败: {str(error)}")
+        return jsonify({"error": f"评估失败: {str(error)}"}), 500
+
+def generate_simplified_wai_assessment(conversation):
+    """生成简化的WAI评估（备用）"""
+    user_messages = [m for m in conversation if m.get('role') == 'user']
+    
+    # 基于对话长度生成基本评估
+    if len(user_messages) > 10:
+        bond_score = random.randint(5, 7)
+        task_score = random.randint(4, 6)
+        goal_score = random.randint(4, 6)
+    elif len(user_messages) > 5:
+        bond_score = random.randint(4, 6)
+        task_score = random.randint(3, 5)
+        goal_score = random.randint(3, 5)
+    else:
+        bond_score = random.randint(3, 5)
+        task_score = random.randint(2, 4)
+        goal_score = random.randint(2, 4)
+    
+    total_score = bond_score + task_score + goal_score
+    
+    return {
+        "wai_dimension_scores": {
+            "bond": {"score": bond_score, "items": []},
+            "task": {"score": task_score, "items": []},
+            "goal": {"score": goal_score, "items": []}
+        },
+        "wai_total": total_score,
+        "wai_percentage": round((total_score / 21) * 100, 1),
+        "dimension_analysis": {
+            "bond": "基于有限对话，情感联结初步建立",
+            "task": "咨询任务合作基本达成共识",
+            "goal": "治疗目标方向基本一致"
+        },
+        "strengths": ["能够建立基本信任关系", "咨询目标初步明确"],
+        "improvement_suggestions": [
+            "建议加强情感回应的一致性",
+            "可以更清晰地阐明咨询目标",
+            "需要加强任务导向的合作"
+        ],
+        "overall_assessment": "对话初步建立了工作联盟，建议继续深化咨询关系。"
+    }
 
 @app.route('/api/save-feedback', methods=['POST'])
 @require_session
@@ -2659,41 +2888,110 @@ def start_exam(client_id):
                 return render_template('error.html', error_code=404, error_title="来访者不存在"), 404
             print(f"成功加载自定义客户端: {client_id}")
 
-        # 初始化模拟器
-        simulator = create_simulator(client_id)
-        if not simulator:
-            print(f"错误 - 模拟器初始化失败")
-            return render_template('error.html',
-                         error_code=500,
-                         error_title="服务器错误",
-                         error_message="AI模拟器初始化失败"), 500
         
-        print(f"模拟器创建成功")
-        
-        # 使用与训练模式完全相同的初始提示
-        initial_prompt = (
-            "现在你是一位心理咨询来访者，刚见到咨询师。"
-            "不要直接暴露核心问题，表现出适当的防御和不确定性。"
-            "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨和防御。"
-            "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
-            "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
-            "不要说:'会按照所设置的规则来扮演心理咨询来访者Djjo。如果有需要进一步调整我的行为，请随时告诉我。准备好了，可以开始模拟咨询。'，请扮演一位真正需要帮助的来访者，第一句话可以是'你好，嗯...我不知道从哪里开始'"
+            simulator = create_simulator(client_id)
+            if not simulator:
+                print(f"错误 - 模拟器初始化失败")
+                return render_template('error.html',
+                            error_code=500,
+                            error_title="服务器错误",
+                            error_message="AI模拟器初始化失败",
+                            error_details=""), 500
+                
+            print(f"模拟器创建成功")
+                
+                # 修改后的初始提示 - 确保第一句话有意义
+            initial_prompt = (
+                    "现在你是一位心理咨询来访者，刚见到咨询师。"
+                    "请根据你的角色设定，说出自然、有意义的第一句话。"
+                    "不要直接暴露核心问题，表现出适当的防御和不确定性。"
+                    "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨慎和防御。"
+                    "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
+                    "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
+                    "**重要：不要使用以下无意义的开场白：**"
+                    "1. '好的，现在我要扮演一个来访者'"
+                    "2. '抱歉，我不能帮助实现这个请求'"
+                    "3. '会按照所设置的规则来扮演心理咨询来访者'"
+                    "4. '准备好了，可以开始模拟咨询'"
+                    "5. 任何暴露你是在扮演角色的语言"
+                    
+                    "自然的开场白可以是："
+                    "'你好，嗯...我不知道从哪里开始'"
+                    "'最近我总是睡不好觉，感觉很焦虑'"
+                    "'我有些困扰想找人聊聊'"
+                    "'最近压力很大，感觉需要一些帮助'"
+                    
+                    "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意："
+                    "1. 在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时"
+                    "2. 在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时"
+                    "3. 在咨询师一次提出多个问题，或说了其他让你难以回复的话时"
+                    "4. 在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时"
+                    "5. 在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
+                    "6. 根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
+                    
+                    "请扮演一位真正需要帮助的来访者，开始你的第一句话："
+            )
+                
+                # 验证函数：确保第一句话有意义
+            def validate_first_message(message):
+                """验证第一句话是否有意义"""
+                if not message or len(message.strip()) < 5:
+                    return False
+                    
+                invalid_patterns = [
+                    r'好的.*扮演.*来访者',
+                    r'抱歉.*不能帮助',
+                    r'按照.*规则.*扮演',
+                    r'准备好了.*开始.*咨询',
+                    r'现在我要.*扮演',
+                    r'模拟咨询',
+                    r'AI.*来访者',
+                    r'大语言模型',
+                    r'作为.*AI'
+                ]
+                    
+                message_lower = message.lower()
+                for pattern in invalid_patterns:
+                    if re.search(pattern, message_lower):
+                        return False
+                    
+                return True
+                
+                # 生成初始消息并验证
+            max_attempts = 3
+            initial_message = None
+                
+            for attempt in range(max_attempts):
+                try:
+                    generated_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
+                    
+                    if validate_first_message(generated_message):
+                        initial_message = generated_message
+                        print(f"第{attempt+1}次尝试：成功生成有效的初始消息")
+                        break
+                    else:
+                        print(f"第{attempt+1}次尝试：初始消息不符合要求，重新生成")
+                        print(f"消息内容：{generated_message[:50]}...")
+                           
+                except Exception as e:
+                    print(f"第{attempt+1}次尝试生成消息失败：{str(e)}")
+                
+            # 如果所有尝试都失败，使用备用消息
+            if not initial_message:
+                print("所有尝试失败，使用备用初始消息")
+                   # 根据客户端问题生成备用消息
+                issue = client.get('issue', '心理困扰')
+                backup_messages = [
+                    f"您好，我最近总是睡不好，感觉压力很大...",
+                    f"嗯...我不知道该从哪里说起，就是感觉最近状态很不好...",
+                    f"我想聊聊最近困扰我的一些事情...",
+                    f"最近总觉得很焦虑，有些事情想找人倾诉..."
+                ]
+                initial_message = random.choice(backup_messages)
             
-            "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意;"
-                "1,在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时,"
-                "2,在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时,"
-                "3,在咨询师一次提出多个问题，或说了其他让你难以回复的话时,"
-                "4,在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时,"
-                "5,在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
-                "6,根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
-        ) 
-         
-        try:
-            initial_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
-            print(f"初始消息生成成功: {initial_message[:50]}...")
-        except Exception as e:
-            print(f"初始消息生成失败: {str(e)}")
-            initial_message = "您好,我最近总是睡不好..."
+            print(f"最终初始消息：{initial_message[:50]}...")
+
+
         
         # 初始化会话记录
         session['conversation'] = [

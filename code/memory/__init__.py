@@ -1,11 +1,16 @@
-from .types import EventMemory
-from .chat import chat
-from .summary import update_summary
-from .memory import update_user_info
+
+"""
+长时记忆模块
+"""
+from .memory import Memory, MemoryItem, get_memory
+from .summary import SummaryMemory
+from .utils import clean_text, now_timestamp
 
 __all__ = [
-    'chat',
-    'update_summary',
-    'update_user_info',
-    'EventMemory',
+    'Memory',
+    'MemoryItem', 
+    'get_memory',
+    'SummaryMemory',
+    'clean_text',
+    'now_timestamp'
 ]

@@ -1,0 +1,143 @@
+/* static/css/wai.css */
+.wai-assessment-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.wai-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #4a6fe6;
+    padding-bottom: 15px;
+}
+
+.wai-header h2 {
+    color: #2c5282;
+    margin-bottom: 10px;
+}
+
+.wai-header p {
+    color: #666;
+    font-size: 14px;
+}
+
+.wai-dimension {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #4a6fe6;
+}
+
+.wai-dimension h3 {
+    color: #2c5282;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wai-dimension-score {
+    background: #4a6fe6;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.wai-items-list {
+    list-style: none;
+    padding: 0;
+}
+
+.wai-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.wai-item-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.wai-item-score {
+    margin-left: 15px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: #e8f4fd;
+    color: #2c5282;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}
+
+.wai-overall {
+    background: #f0f8ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.wai-total-score {
+    font-size: 36px;
+    font-weight: bold;
+    color: #2c5282;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.wai-percentage {
+    text-align: center;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.wai-summary {
+    margin-top: 20px;
+}
+
+.wai-summary h4 {
+    color: #2c5282;
+    margin-bottom: 10px;
+}
+
+.wai-suggestions {
+    margin-top: 30px;
+}
+
+.wai-suggestions h4 {
+    color: #2c5282;
+    margin-bottom: 15px;
+}
+
+.wai-suggestions ul {
+    list-style: none;
+    padding: 0;
+}
+
+.wai-suggestions li {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+    border-left: 3px solid #4a6fe6;
+}
+
+/* 评分颜色指示 */
+.score-7 { background: #10b981; color: white; }
+.score-6 { background: #34d399; color: white; }
+.score-5 { background: #60a5fa; color: white; }
+.score-4 { background: #93c5fd; color: #333; }
+.score-3 { background: #fbbf24; color: #333; }
+.score-2 { background: #f97316; color: white; }
+.score-1 { background: #ef4444; color: white; }
