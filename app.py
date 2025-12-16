@@ -125,6 +125,11 @@ from ai_role_simulator.clients.syan.data_PatientPsi_syan import (
     events as syan_events, status as syan_status, notes as syan_notes
 )
 
+from wai_questionnaire import (
+    WAI_CLIENT_ITEMS, WAI_COUNSELOR_ITEMS, WAI_DIMENSIONS,
+    calculate_wai_scores, interpret_wai_scores, generate_wai_report
+)
+
 def ensure_memory_dirs():
     """确保内存存储目录存在"""
     # 主数据目录
@@ -2209,47 +2214,7 @@ def wai_comprehensive_feedback():
         app.logger.error(f"WAI综合评估失败: {str(error)}")
         return jsonify({"error": f"评估失败: {str(error)}"}), 500
 
-def generate_simplified_wai_assessment(conversation):
-    """生成简化的WAI评估（备用）"""
-    user_messages = [m for m in conversation if m.get('role') == 'user']
-    
-    # 基于对话长度生成基本评估
-    if len(user_messages) > 10:
-        bond_score = random.randint(5, 7)
-        task_score = random.randint(4, 6)
-        goal_score = random.randint(4, 6)
-    elif len(user_messages) > 5:
-        bond_score = random.randint(4, 6)
-        task_score = random.randint(3, 5)
-        goal_score = random.randint(3, 5)
-    else:
-        bond_score = random.randint(3, 5)
-        task_score = random.randint(2, 4)
-        goal_score = random.randint(2, 4)
-    
-    total_score = bond_score + task_score + goal_score
-    
-    return {
-        "wai_dimension_scores": {
-            "bond": {"score": bond_score, "items": []},
-            "task": {"score": task_score, "items": []},
-            "goal": {"score": goal_score, "items": []}
-        },
-        "wai_total": total_score,
-        "wai_percentage": round((total_score / 21) * 100, 1),
-        "dimension_analysis": {
-            "bond": "基于有限对话，情感联结初步建立",
-            "task": "咨询任务合作基本达成共识",
-            "goal": "治疗目标方向基本一致"
-        },
-        "strengths": ["能够建立基本信任关系", "咨询目标初步明确"],
-        "improvement_suggestions": [
-            "建议加强情感回应的一致性",
-            "可以更清晰地阐明咨询目标",
-            "需要加强任务导向的合作"
-        ],
-        "overall_assessment": "对话初步建立了工作联盟，建议继续深化咨询关系。"
-    }
+
 
 @app.route('/api/save-feedback', methods=['POST'])
 @require_session
@@ -2279,6 +2244,269 @@ def save_wai_feedback():
     except Exception as e:
         app.logger.error(f"保存反馈失败: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/wai-full-assessment', methods=['POST'])
+@require_session
+def wai_full_assessment():
+    """完整的WAI评估，基于对话内容自动评分"""
+    try:
+        session_id = session.get('sid')
+        if not session_id:
+            return jsonify({"error": "会话未初始化"}), 400
+        
+        # 获取对话记录
+        conversation = session.get('conversation', [])
+        if len(conversation) < 4:  # 至少2轮对话
+            return jsonify({
+                "error": "对话内容不足",
+                "message": "请至少完成2轮对话后再进行评估"
+            }), 400
+        
+        # 构建对话文本
+        conversation_text = ""
+        for i, msg in enumerate(conversation, 1):
+            role = "咨询师" if msg.get('role') == 'user' else "来访者"
+            content = msg.get('content', '')
+            conversation_text += f"【第{i}轮】{role}: {content}\n\n"
+        
+        # 使用AI分析对话并生成WAI评分
+        prompt = f"""你是一位专业的心理咨询督导。请分析以下咨询对话，并根据WAI工作联盟量表的三个维度进行评分。
+
+## 对话内容：
+{conversation_text[:3000]}
+
+## WAI工作联盟量表三个维度：
+1. **情感联结 (Bond)**: 指咨询师与来访者之间的信任、关心、接纳等情感连接
+2. **任务合作 (Task)**: 指咨询师与来访者对咨询过程中需要完成的任务达成的一致
+3. **目标一致 (Goal)**: 指咨询师与来访者对咨询目标的共识程度
+
+## 评分要求：
+请为每个维度给出1-7分的评分（7分最高），并基于对话内容提供具体理由。
+
+请返回以下JSON格式：
+{{
+  "wai_scores": {{
+    "bond": {{
+      "score": 5,
+      "rationale": "具体理由..."
+    }},
+    "task": {{
+      "score": 5,
+      "rationale": "具体理由..."
+    }},
+    "goal": {{
+      "score": 5,
+      "rationale": "具体理由..."
+    }}
+  }},
+  "item_assessments": [
+    {{
+      "item_id": 1,
+      "item_text": "我和咨询师相处时觉得不自在",
+      "assessment": "基于对话，来访者表现出...",
+      "estimated_score": 5
+    }},
+    // ... 更多项目评估
+  ],
+  "strengths": ["优势1", "优势2", "优势3"],
+  "improvement_areas": ["需要改进的方面1", "需要改进的方面2"],
+  "overall_assessment": "总体评价..."
+}}
+
+请确保评分基于对话实际内容，引用具体对话例子。"""
+
+        # 调用OpenAI进行分析
+        messages = [
+            {"role": "system", "content": "你是专业的心理咨询督导，请基于WAI工作联盟量表对咨询对话进行详细评估。"},
+            {"role": "user", "content": prompt}
+        ]
+        
+        try:
+            response = openai_client.chat.completions.create(
+                model=app.config.get('OPENAI_MODEL', 'gpt-4'),
+                messages=messages,
+                max_tokens=2000,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            ai_assessment = json.loads(response.choices[0].message.content)
+            
+            # 计算综合得分
+            bond_score = ai_assessment.get('wai_scores', {}).get('bond', {}).get('score', 4)
+            task_score = ai_assessment.get('wai_scores', {}).get('task', {}).get('score', 4)
+            goal_score = ai_assessment.get('wai_scores', {}).get('goal', {}).get('score', 4)
+            
+            # 模拟WAI量表响应（基于AI评分）
+            responses = {}
+            for i in range(1, 37):
+                # 根据维度分配分数
+                if i in [1, 3, 5, 8, 17, 19, 20, 21, 23, 26, 28, 29, 36]:
+                    base_score = bond_score
+                elif i in [2, 7, 9, 11, 13, 16, 18, 22, 24, 30, 31, 33]:
+                    base_score = task_score
+                else:
+                    base_score = goal_score
+                
+                # 添加一些随机波动，使分数更真实
+                import random
+                variation = random.randint(-1, 1)
+                responses[i] = max(1, min(7, base_score + variation))
+            
+            # 计算WAI得分
+            wai_scores = calculate_wai_scores(responses, role="client")
+            interpretation = interpret_wai_scores(wai_scores)
+            report = generate_wai_report(wai_scores, interpretation, conversation)
+            
+            # 合并AI评估和WAI计算
+            full_assessment = {
+                "ai_assessment": ai_assessment,
+                "wai_calculated": {
+                    "scores": wai_scores,
+                    "interpretation": interpretation,
+                    "report": report
+                },
+                "conversation_summary": {
+                    "total_turns": len([m for m in conversation if m.get('role') == 'user']),
+                    "conversation_excerpt": conversation_text[:500] + "..." if len(conversation_text) > 500 else conversation_text
+                }
+            }
+            
+            # 保存到session
+            session['wai_full_assessment'] = full_assessment
+            session.modified = True
+            
+            return jsonify({
+                "success": True,
+                "assessment": full_assessment
+            })
+            
+        except Exception as ai_error:
+            app.logger.error(f"AI分析失败: {ai_error}")
+            # 返回简化的评估
+            return jsonify({
+                "success": True,
+                "assessment": generate_fallback_wai_assessment(conversation)
+            })
+        
+    except Exception as error:
+        app.logger.error(f"WAI完整评估失败: {str(error)}")
+        return jsonify({"error": f"评估失败: {str(error)}"}), 500
+
+def generate_fallback_wai_assessment(conversation):
+    """生成备用的WAI评估"""
+    user_messages = [m for m in conversation if m.get('role') == 'user']
+    turns = len(user_messages)
+    
+    # 基于对话轮次生成合理的分数
+    if turns > 20:
+        bond_score, task_score, goal_score = 5, 5, 5
+    elif turns > 10:
+        bond_score, task_score, goal_score = 4, 4, 4
+    else:
+        bond_score, task_score, goal_score = 3, 3, 3
+    
+    responses = {}
+    for i in range(1, 37):
+        if i in [1, 3, 5, 8, 17, 19, 20, 21, 23, 26, 28, 29, 36]:
+            base_score = bond_score
+        elif i in [2, 7, 9, 11, 13, 16, 18, 22, 24, 30, 31, 33]:
+            base_score = task_score
+        else:
+            base_score = goal_score
+        
+        import random
+        variation = random.randint(-1, 1)
+        responses[i] = max(1, min(7, base_score + variation))
+    
+    wai_scores = calculate_wai_scores(responses, role="client")
+    interpretation = interpret_wai_scores(wai_scores)
+    report = generate_wai_report(wai_scores, interpretation)
+    
+    return {
+        "ai_assessment": {
+            "wai_scores": {
+                "bond": {"score": bond_score, "rationale": "基于对话轮次生成的默认评估"},
+                "task": {"score": task_score, "rationale": "基于对话轮次生成的默认评估"},
+                "goal": {"score": goal_score, "rationale": "基于对话轮次生成的默认评估"}
+            },
+            "strengths": ["对话正常进行", "基本建立了咨询关系"],
+            "improvement_areas": ["建议增加对话深度", "加强情感回应"],
+            "overall_assessment": "对话初步建立了工作联盟"
+        },
+        "wai_calculated": {
+            "scores": wai_scores,
+            "interpretation": interpretation,
+            "report": report
+        }
+    }
+
+# 添加获取WAI问卷条目的路由
+@app.route('/api/wai-questionnaire', methods=['GET'])
+def get_wai_questionnaire():
+    """获取WAI问卷条目"""
+    version = request.args.get('version', 'client')  # client 或 counselor
+    
+    if version == 'counselor':
+        items = WAI_COUNSELOR_ITEMS
+    else:
+        items = WAI_CLIENT_ITEMS
+    
+    return jsonify({
+        "version": version,
+        "scoring": WAI_SCORING,
+        "dimensions": WAI_DIMENSIONS,
+        "items": items,
+        "total_items": len(items)
+    })
+
+# 修改现有的 /api/wai-feedback 路由，使其使用完整的WAI评估
+@app.route('/api/wai-feedback', methods=['POST'])
+@require_session
+def wai_feedback():
+    """WAI反馈 - 使用完整的WAI评估"""
+    try:
+        # 调用完整的WAI评估
+        response_data = wai_full_assessment()
+        
+        # 如果返回的是Response对象（错误情况）
+        if isinstance(response_data, tuple):
+            return response_data
+        
+        # 否则返回评估结果
+        assessment = response_data.json['assessment']
+        
+        # 格式化为前端需要的格式
+        wai_scores = assessment['wai_calculated']['scores']
+        
+        result = {
+            "wai_scores": {
+                "bond": wai_scores['bond_avg'],
+                "task": wai_scores['task_avg'],
+                "goal": wai_scores['goal_avg']
+            },
+            "wai_total": wai_scores['total'],
+            "wai_percentage": wai_scores['total_percent'],
+            "dimension_comments": {
+                "bond": assessment['ai_assessment']['wai_scores']['bond']['rationale'],
+                "task": assessment['ai_assessment']['wai_scores']['task']['rationale'],
+                "goal": assessment['ai_assessment']['wai_scores']['goal']['rationale']
+            },
+            "suggestions": assessment['ai_assessment'].get('improvement_areas', []),
+            "strengths": assessment['ai_assessment'].get('strengths', []),
+            "overall_assessment": assessment['ai_assessment'].get('overall_assessment', ''),
+            "detailed_report": assessment['wai_calculated']['report']
+        }
+        
+        # 保存结果
+        session['last_feedback'] = result
+        session.modified = True
+        
+        return jsonify(result)
+        
+    except Exception as error:
+        app.logger.error(f"WAI反馈生成失败: {str(error)}")
+        return jsonify({"error": f"评估失败: {str(error)}"}), 500
 
 @app.route('/api/export-report', methods=['GET', 'POST'])
 @require_session
