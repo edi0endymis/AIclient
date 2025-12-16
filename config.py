@@ -135,7 +135,7 @@ class AppConfig(BaseConfig):
     # 应用配置
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev临时密钥')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://yibuapi.com/v1')
-    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'deepseek-v3')
+    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'qwen3-32b')
     SESSION_TYPE = 'sqlalchemy'
 
