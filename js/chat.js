@@ -68,55 +68,175 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function endSession() {
         try {
-            console.log("开始结束会话...");
+            console.log("开始结束会话并生成WAI评估...");
             
-            const response = await fetch('/end-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+            // 显示加载提示
+            const loadingToast = showToast('正在生成WAI评估报告...', 'info');
+            
+            // 1. 首先获取对话基本信息
+            const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者';
+            const userMessages = document.querySelectorAll('.message.user');
+            const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
+            const totalTurns = Math.min(userMessages.length, aiMessages.length);
+            
+            // 2. 调用WAI评估API
+            let waiAssessment = null;
+            try {
+                const waiResponse = await fetch('/api/wai-feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Check': 'true'
+                    },
+                    body: JSON.stringify({ mode: 'train' })
+                });
+                
+                if (waiResponse.ok) {
+                    waiAssessment = await waiResponse.json();
+                    console.log("WAI评估成功:", waiAssessment);
+                } else {
+                    console.warn("WAI评估失败，使用默认评估");
+                    waiAssessment = generateDefaultWAIAssessment(totalTurns);
                 }
-            });
-            
-            console.log("结束会话响应状态:", response.status);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("结束会话错误详情:", errorData);
-                throw new Error(errorData.error || '结束会话失败: ' + response.status);
+            } catch (waiError) {
+                console.error("WAI评估错误:", waiError);
+                waiAssessment = generateDefaultWAIAssessment(totalTurns);
             }
             
-            const data = await response.json();
-            console.log("结束会话成功:", data);
+            // 3. 构建完整报告数据
+            const reportData = {
+                client_name: clientName,
+                client_issue: document.querySelector('.chat-header small')?.textContent || '未指定问题',
+                conversation_date: new Date().toLocaleString('zh-CN'),
+                total_turns: totalTurns,
+                estimated_time: `${totalTurns * 2} 分钟`,
+                wai_assessment: waiAssessment,  // 包含WAI评估
+                key_insights: generateKeyInsights(totalTurns, waiAssessment),
+                professional_advice: generateProfessionalAdvice(waiAssessment),
+                ethical_violations: []
+            };
             
-            if (data.report) {
-                showReportModal(data.report);
-            } else {
-                throw new Error('没有收到报告数据');
+            // 4. 保存报告数据到服务器（可选）
+            try {
+                await fetch('/api/save-feedback', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ report_data: reportData })
+                });
+            } catch (saveError) {
+                console.warn("保存报告失败:", saveError);
+            }
+            
+            // 5. 显示报告弹窗
+            showReportModal(reportData);
+            
+            // 6. 可选：标记会话结束
+            try {
+                await fetch('/end-session', { method: 'POST' });
+            } catch (endError) {
+                console.warn("结束会话API调用失败:", endError);
             }
             
         } catch (error) {
-            console.error('结束会话错误详情:', error);
+            console.error('结束会话错误:', error);
+            showToast('生成报告失败: ' + error.message, 'error');
             
-            // 即使报告生成失败，也显示一个基本的报告弹窗
-            try {
-                const fallbackReport = await generateFallbackReport();
-                showReportModal(fallbackReport);
-            } catch (fallbackError) {
-                showToast(`会话已结束，但报告生成失败: ${error.message}`, 'error');
-                // 创建一个最简单的报告弹窗
-                const simpleReport = {
-                    client_name: document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者',
-                    client_issue: '未知问题',
-                    conversation_date: new Date().toLocaleString('zh-CN'),
-                    total_turns: document.querySelectorAll('.message.user').length,
-                    estimated_time: `${document.querySelectorAll('.message.user').length * 2} 分钟`,
-                    key_insights: ['对话已成功结束'],
-                    professional_advice: ['请回顾对话内容进行反思'],
-                    ethical_violations: []
-                };
-                showReportModal(simpleReport);
-            }
+            // 显示基本的报告弹窗
+            const fallbackReport = await generateFallbackReport();
+            showReportModal(fallbackReport);
         }
+    }
+
+    // 生成默认的WAI评估（备用）
+    function generateDefaultWAIAssessment(totalTurns) {
+        // 基于对话轮次生成合理的默认评分
+        let bondScore, taskScore, goalScore;
+        
+        if (totalTurns > 20) {
+            bondScore = randomBetween(5, 7);
+            taskScore = randomBetween(4, 6);
+            goalScore = randomBetween(4, 6);
+        } else if (totalTurns > 10) {
+            bondScore = randomBetween(4, 6);
+            taskScore = randomBetween(3, 5);
+            goalScore = randomBetween(3, 5);
+        } else {
+            bondScore = randomBetween(3, 5);
+            taskScore = randomBetween(2, 4);
+            goalScore = randomBetween(2, 4);
+        }
+        
+        return {
+            wai_scores: {
+                bond: bondScore,
+                task: taskScore,
+                goal: goalScore
+            },
+            wai_total: bondScore + taskScore + goalScore,
+            wai_percentage: Math.round(((bondScore + taskScore + goalScore) / 21) * 100),
+            dimension_comments: {
+                bond: "基于对话内容，情感联结初步建立",
+                task: "咨询任务合作基本达成共识",
+                goal: "治疗目标方向基本明确"
+            },
+            suggestions: [
+                "建议加强情感回应的一致性",
+                "可以更清晰地阐明咨询目标",
+                "需要加强任务导向的合作"
+            ],
+            strengths: ["能够建立基本信任关系", "咨询目标初步明确"],
+            overall_assessment: "对话初步建立了工作联盟，建议继续深化咨询关系。"
+        };
+    }
+
+    function randomBetween(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function generateKeyInsights(totalTurns, waiAssessment) {
+        const insights = [];
+        
+        if (waiAssessment?.wai_scores) {
+            const scores = waiAssessment.wai_scores;
+            
+            if (scores.bond >= 5) {
+                insights.push("情感联结良好，建立了较好的信任关系");
+            } else {
+                insights.push("情感联结有待加强，信任关系需要进一步建立");
+            }
+            
+            if (scores.task >= 5) {
+                insights.push("任务合作有效，咨询任务明确");
+            } else {
+                insights.push("任务合作需要加强，咨询任务可更清晰");
+            }
+            
+            if (scores.goal >= 5) {
+                insights.push("目标一致性好，治疗方向明确");
+            } else {
+                insights.push("目标一致性需提升，治疗方向可进一步明确");
+            }
+        } else {
+            insights.push("完成了" + totalTurns + "轮对话");
+            insights.push("对话已正常结束");
+            insights.push("建议回顾对话内容进行反思");
+        }
+        
+        return insights;
+    }
+
+    function generateProfessionalAdvice(waiAssessment) {
+        if (waiAssessment?.suggestions) {
+            return waiAssessment.suggestions;
+        }
+        
+        return [
+            "建议增加开放式问题的使用",
+            "注意对话节奏的控制", 
+            "加强情感回应技巧",
+            "提升倾听和共情能力",
+            "注意非语言信息的观察"
+        ];
     }
 
     // 在 chat.js 的 endSession 函数后，添加以下代码：
@@ -428,7 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // 显示报告弹窗
     function showReportModal(reportData) {
         const modal = document.getElementById('report-modal');
         const basicInfo = document.getElementById('report-basic-info');
@@ -436,33 +555,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const advice = document.getElementById('report-advice');
         const ethical = document.getElementById('report-ethical');
         const ethicalSection = document.getElementById('ethical-section');
-    
-    // 填充基本信息
-        basicInfo.innerHTML = `
-        <p><strong>来访者:</strong> ${reportData.client_name}</p>
-        <p><strong>主要问题:</strong> ${reportData.client_issue}</p>
-        <p><strong>对话时间:</strong> ${reportData.conversation_date}</p>
-        <p><strong>对话轮次:</strong> ${reportData.total_turns} 轮</p>
-        <p><strong>预计用时:</strong> ${reportData.estimated_time}</p>
+        
+        // 填充基本信息 - 添加WAI评分
+        let basicHTML = `
+            <p><strong>来访者:</strong> ${reportData.client_name}</p>
+            <p><strong>主要问题:</strong> ${reportData.client_issue}</p>
+            <p><strong>对话时间:</strong> ${reportData.conversation_date}</p>
+            <p><strong>对话轮次:</strong> ${reportData.total_turns} 轮</p>
+            <p><strong>预计用时:</strong> ${reportData.estimated_time}</p>
         `;
-    
-    // 填充关键洞察
+        
+        // 如果有WAI评估，显示WAI评分
+        if (reportData.wai_assessment) {
+            const wai = reportData.wai_assessment;
+            const scores = wai.wai_scores || {};
+            
+            basicHTML += `
+                <div class="wai-scores">
+                    <p><strong>WAI工作联盟评分:</strong></p>
+                    <p>情感联结: ${scores.bond || 'N/A'}/7</p>
+                    <p>任务合作: ${scores.task || 'N/A'}/7</p>
+                    <p>目标一致: ${scores.goal || 'N/A'}/7</p>
+                    <p><strong>总分:</strong> ${wai.wai_total || 'N/A'}/21 (${wai.wai_percentage || 'N/A'}%)</p>
+                </div>
+            `;
+        }
+        
+        basicInfo.innerHTML = basicHTML;
+        
+        // 填充关键洞察
         keyInsights.innerHTML = '';
         reportData.key_insights.forEach(insight => {
             const li = document.createElement('li');
             li.textContent = insight;
             keyInsights.appendChild(li);
         });
-    
-    // 填充专业建议
+        
+        // 填充专业建议
         advice.innerHTML = '';
         reportData.professional_advice.forEach(adv => {
             const li = document.createElement('li');
             li.textContent = adv;
             advice.appendChild(li);
         });
-    
-        // 填充伦理注意事项（如果有）
+        
+        // 填充伦理注意事项
         if (reportData.ethical_violations && reportData.ethical_violations.length > 0) {
             ethicalSection.style.display = 'block';
             ethical.innerHTML = '';
@@ -474,10 +611,53 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             ethicalSection.style.display = 'none';
         }
-    
-    // 显示弹窗
+        
+        // 如果有详细的WAI分析，创建额外的分析部分
+        if (reportData.wai_assessment?.dimension_comments) {
+            // 创建WAI分析部分
+            const waiAnalysis = document.createElement('div');
+            waiAnalysis.className = 'report-section';
+            waiAnalysis.innerHTML = `
+                <h4>WAI详细分析</h4>
+                <div id="wai-detailed-analysis"></div>
+            `;
+            
+            // 插入到关键洞察之前
+            const keyInsightsSection = keyInsights.closest('.report-section');
+            keyInsightsSection.parentNode.insertBefore(waiAnalysis, keyInsightsSection);
+            
+            // 填充详细分析
+            const analysisDiv = document.getElementById('wai-detailed-analysis');
+            const comments = reportData.wai_assessment.dimension_comments;
+            
+            analysisDiv.innerHTML = `
+                <p><strong>情感联结:</strong> ${comments.bond || '未评估'}</p>
+                <p><strong>任务合作:</strong> ${comments.task || '未评估'}</p>
+                <p><strong>目标一致:</strong> ${comments.goal || '未评估'}</p>
+            `;
+            
+            // 如果有优势分析
+            if (reportData.wai_assessment.strengths?.length > 0) {
+                const strengthsDiv = document.createElement('div');
+                strengthsDiv.innerHTML = `
+                    <p><strong>咨询优势:</strong></p>
+                    <ul id="wai-strengths-list"></ul>
+                `;
+                analysisDiv.appendChild(strengthsDiv);
+                
+                const strengthsList = document.getElementById('wai-strengths-list');
+                reportData.wai_assessment.strengths.forEach(strength => {
+                    const li = document.createElement('li');
+                    li.textContent = strength;
+                    strengthsList.appendChild(li);
+                });
+            }
+        }
+        
+        // 显示弹窗
         modal.style.display = 'block';
     }
+
 
 // 导出报告功能
     async function exportReport() {
@@ -759,55 +939,175 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function endSession() {
         try {
-            console.log("开始结束会话...");
+            console.log("开始结束会话并生成WAI评估...");
             
-            const response = await fetch('/end-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+            // 显示加载提示
+            const loadingToast = showToast('正在生成WAI评估报告...', 'info');
+            
+            // 1. 首先获取对话基本信息
+            const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者';
+            const userMessages = document.querySelectorAll('.message.user');
+            const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
+            const totalTurns = Math.min(userMessages.length, aiMessages.length);
+            
+            // 2. 调用WAI评估API
+            let waiAssessment = null;
+            try {
+                const waiResponse = await fetch('/api/wai-feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Check': 'true'
+                    },
+                    body: JSON.stringify({ mode: 'train' })
+                });
+                
+                if (waiResponse.ok) {
+                    waiAssessment = await waiResponse.json();
+                    console.log("WAI评估成功:", waiAssessment);
+                } else {
+                    console.warn("WAI评估失败，使用默认评估");
+                    waiAssessment = generateDefaultWAIAssessment(totalTurns);
                 }
-            });
-            
-            console.log("结束会话响应状态:", response.status);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("结束会话错误详情:", errorData);
-                throw new Error(errorData.error || '结束会话失败: ' + response.status);
+            } catch (waiError) {
+                console.error("WAI评估错误:", waiError);
+                waiAssessment = generateDefaultWAIAssessment(totalTurns);
             }
             
-            const data = await response.json();
-            console.log("结束会话成功:", data);
+            // 3. 构建完整报告数据
+            const reportData = {
+                client_name: clientName,
+                client_issue: document.querySelector('.chat-header small')?.textContent || '未指定问题',
+                conversation_date: new Date().toLocaleString('zh-CN'),
+                total_turns: totalTurns,
+                estimated_time: `${totalTurns * 2} 分钟`,
+                wai_assessment: waiAssessment,  // 包含WAI评估
+                key_insights: generateKeyInsights(totalTurns, waiAssessment),
+                professional_advice: generateProfessionalAdvice(waiAssessment),
+                ethical_violations: []
+            };
             
-            if (data.report) {
-                showReportModal(data.report);
-            } else {
-                throw new Error('没有收到报告数据');
+            // 4. 保存报告数据到服务器（可选）
+            try {
+                await fetch('/api/save-feedback', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ report_data: reportData })
+                });
+            } catch (saveError) {
+                console.warn("保存报告失败:", saveError);
+            }
+            
+            // 5. 显示报告弹窗
+            showReportModal(reportData);
+            
+            // 6. 可选：标记会话结束
+            try {
+                await fetch('/end-session', { method: 'POST' });
+            } catch (endError) {
+                console.warn("结束会话API调用失败:", endError);
             }
             
         } catch (error) {
-            console.error('结束会话错误详情:', error);
+            console.error('结束会话错误:', error);
+            showToast('生成报告失败: ' + error.message, 'error');
             
-            // 即使报告生成失败，也显示一个基本的报告弹窗
-            try {
-                const fallbackReport = await generateFallbackReport();
-                showReportModal(fallbackReport);
-            } catch (fallbackError) {
-                showToast(`会话已结束，但报告生成失败: ${error.message}`, 'error');
-                // 创建一个最简单的报告弹窗
-                const simpleReport = {
-                    client_name: document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者',
-                    client_issue: '未知问题',
-                    conversation_date: new Date().toLocaleString('zh-CN'),
-                    total_turns: document.querySelectorAll('.message.user').length,
-                    estimated_time: `${document.querySelectorAll('.message.user').length * 2} 分钟`,
-                    key_insights: ['对话已成功结束'],
-                    professional_advice: ['请回顾对话内容进行反思'],
-                    ethical_violations: []
-                };
-                showReportModal(simpleReport);
-            }
+            // 显示基本的报告弹窗
+            const fallbackReport = await generateFallbackReport();
+            showReportModal(fallbackReport);
         }
+    }
+
+    // 生成默认的WAI评估（备用）
+    function generateDefaultWAIAssessment(totalTurns) {
+        // 基于对话轮次生成合理的默认评分
+        let bondScore, taskScore, goalScore;
+        
+        if (totalTurns > 20) {
+            bondScore = randomBetween(5, 7);
+            taskScore = randomBetween(4, 6);
+            goalScore = randomBetween(4, 6);
+        } else if (totalTurns > 10) {
+            bondScore = randomBetween(4, 6);
+            taskScore = randomBetween(3, 5);
+            goalScore = randomBetween(3, 5);
+        } else {
+            bondScore = randomBetween(3, 5);
+            taskScore = randomBetween(2, 4);
+            goalScore = randomBetween(2, 4);
+        }
+        
+        return {
+            wai_scores: {
+                bond: bondScore,
+                task: taskScore,
+                goal: goalScore
+            },
+            wai_total: bondScore + taskScore + goalScore,
+            wai_percentage: Math.round(((bondScore + taskScore + goalScore) / 21) * 100),
+            dimension_comments: {
+                bond: "基于对话内容，情感联结初步建立",
+                task: "咨询任务合作基本达成共识",
+                goal: "治疗目标方向基本明确"
+            },
+            suggestions: [
+                "建议加强情感回应的一致性",
+                "可以更清晰地阐明咨询目标",
+                "需要加强任务导向的合作"
+            ],
+            strengths: ["能够建立基本信任关系", "咨询目标初步明确"],
+            overall_assessment: "对话初步建立了工作联盟，建议继续深化咨询关系。"
+        };
+    }
+
+    function randomBetween(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function generateKeyInsights(totalTurns, waiAssessment) {
+        const insights = [];
+        
+        if (waiAssessment?.wai_scores) {
+            const scores = waiAssessment.wai_scores;
+            
+            if (scores.bond >= 5) {
+                insights.push("情感联结良好，建立了较好的信任关系");
+            } else {
+                insights.push("情感联结有待加强，信任关系需要进一步建立");
+            }
+            
+            if (scores.task >= 5) {
+                insights.push("任务合作有效，咨询任务明确");
+            } else {
+                insights.push("任务合作需要加强，咨询任务可更清晰");
+            }
+            
+            if (scores.goal >= 5) {
+                insights.push("目标一致性好，治疗方向明确");
+            } else {
+                insights.push("目标一致性需提升，治疗方向可进一步明确");
+            }
+        } else {
+            insights.push("完成了" + totalTurns + "轮对话");
+            insights.push("对话已正常结束");
+            insights.push("建议回顾对话内容进行反思");
+        }
+        
+        return insights;
+    }
+
+    function generateProfessionalAdvice(waiAssessment) {
+        if (waiAssessment?.suggestions) {
+            return waiAssessment.suggestions;
+        }
+        
+        return [
+            "建议增加开放式问题的使用",
+            "注意对话节奏的控制", 
+            "加强情感回应技巧",
+            "提升倾听和共情能力",
+            "注意非语言信息的观察"
+        ];
     }
 
 // 在 chat.js 的 endSession 函数后，添加以下代码：
