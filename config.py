@@ -136,6 +136,6 @@ class AppConfig(BaseConfig):
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev临时密钥')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://yibuapi.com/v1')
-    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gemini-2.5-pro')
     SESSION_TYPE = 'sqlalchemy'
 
