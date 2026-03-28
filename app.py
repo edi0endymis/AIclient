@@ -3,6 +3,7 @@ from flask import send_file,current_app
 from flask import make_response
 from flask_session import Session
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 import io
 from io import BytesIO
 import re  
@@ -161,6 +162,8 @@ if os.path.exists(static_dir):
 else:
     app = Flask(__name__, template_folder='templates')
 
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 # 确保JSON使用UTF-8
 app.config['JSON_AS_ASCII'] = False  
 app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
@@ -175,7 +178,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(app.config['DATA_DIR'], 'sessions')
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600*2 
-app.config['SESSION_COOKIE_SECURE'] = False  
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('RENDER', '').lower() == 'true'  
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
@@ -252,7 +255,7 @@ def api_chat():
             for msg in session['conversation']:
                 if msg['role'] == 'user':
                     conversation_history.append({"role": "user", "content": msg['content']})
-                elif msg['role'] == 'assistant':
+                elif msg['role'] in ('assistant', 'ai'):
                     conversation_history.append({"role": "assistant", "content": msg['content']})
         
         print(f"对话历史长度: {len(conversation_history)}")
@@ -1281,7 +1284,7 @@ def create_simulator(client_id):
             for attempt in range(max_retries):
                 try:
                     response = openai_client.chat.completions.create(
-                        model=app.config['OPENAI_MODEL'],
+                        model=app.config.get('OPENAI_MODEL') or 'gpt-4o',
                         messages=simplified_messages,
                         max_tokens=400,
                         timeout=20

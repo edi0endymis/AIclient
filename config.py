@@ -20,8 +20,8 @@ class Config:
     
     # OpenAI 配置
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 必填
-    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE') 
-    OPENAI_MODEL = os.getenv('OPENAI_MODEL')  
+    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
     
     # 会话配置 - 确保这些配置正确
     SESSION_TYPE = 'sqlalchemy'
@@ -136,6 +136,6 @@ class AppConfig(BaseConfig):
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev临时密钥')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://yibuapi.com/v1')
-    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpy-4o')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
     SESSION_TYPE = 'sqlalchemy'
 
