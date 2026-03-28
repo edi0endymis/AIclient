@@ -29,11 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalBtnText = submitBtn.textContent;
         
         try {
-            // 禁用提交按钮防止重复提交
+            // Disable submit button to prevent duplicate submissions
             submitBtn.disabled = true;
-            submitBtn.textContent = '创建中...';
+            submitBtn.textContent = 'Creating...';
             
-            // 收集表单数据
+            // Collect form data
             const formData = new FormData(form);
             const data = {
                 name: formData.get('name'),
@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 initial_stage: formData.get('initial_stage')|| 'defensive' 
             };
 
-            // 验证必填字段
+            // Validate required fields
             if (!data.name || !data.main_issue || !data.background) {
-                throw new Error('请填写所有必填字段');
+                throw new Error('Please fill in all required fields');
             }
 
-            // 发送创建请求
+            // Send creation request
             const response = await fetch('/create-client', {
                 method: 'POST',
                 headers: {
@@ -62,28 +62,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.error || '创建失败，请稍后重试');
+                throw new Error(result.error || 'Creation failed, please try again later');
             }
 
-            // 显示成功通知
-            showToast('来访者创建成功', 'success');
-            
-            // 延迟跳转让用户看到成功消息
-            setTimeout(() => {
-                window.location.href = `/start-session/${result.client_id}`;
-            }, 1500);
+            // Display success notification
+            if (result.success) {
+                showToast('Client created successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = `/start-session/${result.client_id}`;
+                }, 1000);
+            } else {
+                showToast('Creation failed: ' + (result.error || 'Unknown error'), 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create and Start Training';
+            }
 
         } catch (error) {
-            console.error('创建来访者错误:', error);
+            console.error('Error creating visitor:', error);
             showToast(error.message, 'error');
             
-            // 重新启用提交按钮
+            // Re-enable submit button
             submitBtn.disabled = false;
             submitBtn.textContent = originalBtnText;
         }
     });
 
-    // 为所有输入字段添加验证状态
+    // Add validation status to all input fields
     const inputs = form.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
         input.addEventListener('input', () => {

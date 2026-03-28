@@ -155,79 +155,79 @@
 
 {% block content %}
 <div class="form-container">
-    <a href="/select-client" class="btn-back">← 返回案例列表</a>
+    <a href="/select-client" class="btn-back">← Back to Case List</a>
     
-    <h2 class="form-title">创建新的来访者档案</h2>
+    <h2 class="form-title">Create New Client Profile</h2>
     
     <form id="client-form" class="form">
-        <!-- 基本信息 -->
+        <!-- Basic Information -->
         <div class="form-group">
-            <label for="name">姓名</label>
-            <input type="text" id="name" name="name" required placeholder="来访者姓名">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required placeholder="Client's name">
         </div>
         
         <div class="form-group">
-            <label for="age">年龄</label>
+            <label for="age">Age</label>
             <input type="number" id="age" name="age" min="12" max="88" required placeholder="30" value="30">
         </div>
         
         <div class="form-group">
-            <label for="gender">性别</label>
+            <label for="gender">Gender</label>
             <select id="gender" name="gender" required>
-                <option value="male">男</option>
-                <option value="female" selected>女</option>
+                <option value="male">Male</option>
+                <option value="female" selected>Female</option>
             </select>
         </div>
         
         <div class="form-group">
-            <label for="main_issue">主要问题</label>
-            <input type="text" id="main_issue" name="main_issue" required placeholder="例如：亲密关系恐惧、职业焦虑等">
+            <label for="main_issue">Main Issue</label>
+            <input type="text" id="main_issue" name="main_issue" required placeholder="e.g., Fear of intimacy, occupational anxiety, etc.">
         </div>
         
         <div class="form-group">
-            <label for="background">背景故事</label>
-            <textarea id="background" name="background" rows="5" required placeholder="详细描述来访者的背景、成长经历和关键事件"></textarea>
+            <label for="background">Background Story</label>
+            <textarea id="background" name="background" rows="5" required placeholder="Describe the client's background, developmental history, and key events in detail"></textarea>
         </div>
         
-        <!-- 关键事件部分 -->
+        <!-- Key Events Section -->
         <div class="key-events-section">
-            <h3 style="margin-bottom: 15px; color: #5b7fff;">关键事件</h3>
+            <h3 style="margin-bottom: 15px; color: #5b7fff;">Key Events</h3>
             <div id="key-events-container">
                 <div class="empty-message">
-                    <p>暂无关键事件记录</p>
+                    <p>No key events recorded</p>
                 </div>
             </div>
             
-            <button type="button" id="add-event-btn" class="btn btn-secondary">添加关键事件</button>
+            <button type="button" id="add-event-btn" class="btn btn-secondary">Add Key Event</button>
         </div>
         
-        <!-- 核心信念 -->
+        <!-- Core Beliefs -->
         <div class="form-group">
-            <label for="core_beliefs">核心信念</label>
-            <textarea id="core_beliefs" name="core_beliefs" rows="6" required placeholder="请输入来访者的核心信念，每行一个"></textarea>
+            <label for="core_beliefs">Core Beliefs</label>
+            <textarea id="core_beliefs" name="core_beliefs" rows="6" required placeholder="Enter the client's core beliefs, one per line"></textarea>
         </div>
         
         <div class="form-group">
-            <label for="style">沟通风格</label>
+            <label for="style">Communication Style</label>
             <select id="style" name="style">
-                <option value="natural" selected>自然</option>
-                <option value="formal">正式</option>
-                <option value="resistant">抗拒</option>
+                <option value="natural" selected>Natural</option>
+                <option value="formal">Formal</option>
+                <option value="resistant">Resistant</option>
             </select>
         </div>
         
         <div class="form-group">
-            <label for="initial_stage">初始阶段</label>
+            <label for="initial_stage">Initial Stage</label>
             <select id="initial_stage" name="initial_stage">
-                <option value="defensive" selected>防御期</option>
-                <option value="exploratory">试探期</option>
-                <option value="open">开放期</option>
+                <option value="defensive" selected>Defensive Phase</option>
+                <option value="exploratory">Exploratory Phase</option>
+                <option value="open">Open Phase</option>
             </select>
         </div>
         
         <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="window.location.href='/select-client'">取消</button>
-            <button type="submit" class="btn btn-primary">创建并进入训练</button>
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='/select-client'">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create and Start Training</button>
         </div>
     </form>
 </div>
@@ -238,29 +238,29 @@
         const eventsContainer = document.getElementById('key-events-container');
         const addEventBtn = document.getElementById('add-event-btn');
         
-        // 添加关键事件
+        // Add Key Event
         addEventBtn.addEventListener('click', function() {
             const eventCount = eventsContainer.querySelectorAll('.event-item').length;
             const newEventHtml = `
                 <div class="event-item" data-index="${eventCount}">
                     <div class="event-header">
-                        <h4>事件 ${eventCount + 1}</h4>
+                        <h4>Event ${eventCount + 1}</h4>
                         <div class="event-actions">
-                            <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                            <button type="button" class="btn btn-danger btn-small remove-event">Delete</button>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>事件名称</label>
-                        <input type="text" name="event_name[]" value="" required placeholder="事件名称">
+                        <label>Event Name</label>
+                        <input type="text" name="event_name[]" value="" required placeholder="Event name">
                     </div>
                     <div class="form-group">
-                        <label>事件内容</label>
-                        <textarea name="event_content[]" rows="3" required placeholder="详细描述事件内容"></textarea>
+                        <label>Event Content</label>
+                        <textarea name="event_content[]" rows="3" required placeholder="Describe the event in detail"></textarea>
                     </div>
                 </div>
             `;
             
-            // 如果当前显示"暂无关键事件"，先移除该消息
+            // If currently showing "No key events recorded", remove the message
             const emptyMessage = eventsContainer.querySelector('.empty-message');
             if (emptyMessage) {
                 emptyMessage.remove();
@@ -269,15 +269,15 @@
             eventsContainer.insertAdjacentHTML('beforeend', newEventHtml);
         });
         
-        // 删除关键事件
+        // Remove Key Event
         eventsContainer.addEventListener('click', function(e) {
             if (e.target.classList.contains('remove-event')) {
                 e.target.closest('.event-item').remove();
                 updateEventNumbers();
                 
-                // 如果没有事件了，显示空消息
+                // If no events left, show empty message
                 if (eventsContainer.querySelectorAll('.event-item').length === 0) {
-                    eventsContainer.innerHTML = '<div class="empty-message"><p>暂无关键事件记录</p></div>';
+                    eventsContainer.innerHTML = '<div class="empty-message"><p>No key events recorded</p></div>';
                 }
             }
         });
@@ -285,7 +285,7 @@
         function updateEventNumbers() {
             const events = eventsContainer.querySelectorAll('.event-item');
             events.forEach((event, index) => {
-                event.querySelector('h4').textContent = `事件 ${index + 1}`;
+                event.querySelector('h4').textContent = `Event ${index + 1}`;
             });
         }
         
@@ -324,7 +324,7 @@
             
             // 验证必填字段
             if (!data.name || !data.main_issue || !data.background || !data.core_beliefs.trim()) {
-                alert('请填写所有必填字段');
+                alert('Please fill in all required fields');
                 return;
             }
             
@@ -341,12 +341,12 @@
                 if (result.success) {
                     window.location.href = `/start-session/${result.client_id}`;
                 } else {
-                    alert('创建失败: ' + (result.error || '未知错误'));
+                    alert('Creation failed: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('创建过程中发生错误');
+                alert('An error occurred during creation');
             });
         });
     });

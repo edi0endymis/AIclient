@@ -2,48 +2,48 @@
 
 {% block nav %}
 <nav class="main-nav">
-    <a href="/training" class="btn secondary">训练</a>
-    <a href="/exam" class="btn primary active">考试</a>
+    <a href="/training" class="btn secondary">Training</a>
+    <a href="/exam" class="btn primary active">Exam</a>
 </nav>
 {% endblock %}
 
 {% block content %}
 <div class="container exam-container">
-    <h2>AI来访者模拟考场</h2>
+    <h2>AI Client Simulation Exam Room</h2>
     
     <div class="exam-info">
         <div class="info-card">
-            <h3>考试规则</h3>
+            <h3>Exam Rules</h3>
             <ul>
-                <li>考试时长：<strong>50分钟</strong></li>
-                <li>对话轮次：<strong>最多40轮</strong></li>
-                <li>满足任一条件即自动结束</li>
-                <li>结束后生成详细评估报告</li>
+                <li>Exam Duration: <strong>50 minutes</strong></li>
+                <li>Turns: <strong>Up to 40</strong></li>
+                <li>Ends automatically when either condition is met</li>
+                <li>A detailed assessment report is generated upon completion</li>
             </ul>
         </div>
         
         <div class="info-card">
-            <h3>评估标准</h3>
+            <h3>Assessment Criteria</h3>
             <ul>
-                <li>共情回应能力</li>
-                <li>问题引导技巧</li>
-                <li>伦理规范遵守</li>
-                <li>技术使用规范性</li>
+                <li>Empathic Response Ability</li>
+                <li>Question Guidance Skills</li>
+                <li>Adherence to Ethical Standards</li>
+                <li>Proper Application of Techniques</li>
             </ul>
         </div>
     </div>
 
-    <!-- 直接显示案例选择 -->
+    <!-- Directly display case selection -->
     <div class="exam-case-selection">
-        <h3 style="text-align: center; margin: 30px 0 20px 0; color: #4a6fe6;">选择考试案例</h3>
+        <h3 style="text-align: center; margin: 30px 0 20px 0; color: #4a6fe6;">Select Exam Case</h3>
         <div class="client-list">
             {% for client in clients %}
             {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
             <div class="client-card">
-                <div class="exam-badge">考试案例</div>
+                <div class="exam-badge">Exam Case</div>
                 <div class="client-name">{{ client.name }}</div>
                 <div class="client-issue">{{ client.issue }}</div>
-                <a href="/start-exam/{{ client.id }}" class="btn-exam">开始考试</a>
+                <a href="/start-exam/{{ client.id }}" class="btn-exam">Start Exam</a>
             </div>
             {% endif %}
             {% endfor %}

@@ -175,7 +175,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(app.config['DATA_DIR'], 'sessions')
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600*2 
-app.config['SESSION_COOKIE_SECURE'] = True  
+app.config['SESSION_COOKIE_SECURE'] = False  
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
@@ -344,7 +344,7 @@ def require_session(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'sid' not in session or 'client_id' not in session:
-            return jsonify({"error": "会话未初始化，请重新开始咨询"}), 400
+            return jsonify({"error": "Session not initialized"}), 400
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1016,10 +1016,10 @@ def check_session_active(f):
             if session_id:
                 session['sid'] = session_id
             else:
-                return jsonify({"error": "会话未初始化", "code": "SESSION_NOT_INITIALIZED"}), 400
+                return jsonify({"error": "Session not initialized", "code": "SESSION_NOT_INITIALIZED"}), 400
         
         if 'client_id' not in session:
-            return jsonify({"error": "客户端未选择", "code": "CLIENT_NOT_SELECTED"}), 400
+            return jsonify({"error": "Client not selected", "code": "CLIENT_NOT_SELECTED"}), 400
         
         return f(*args, **kwargs)
     return decorated_function
@@ -1030,14 +1030,14 @@ def require_session(f):
     def decorated_function(*args, **kwargs):
         if 'sid' not in session or 'client_id' not in session:
             # 尝试重新初始化会话
-            client_id = request.args.get('client_id') or request.json.get('client_id')
+            client_id = request.args.get('client_id') or (request.get_json(silent=True) or {}).get('client_id')
             if client_id:
                 session['sid'] = os.urandom(24).hex()
                 session['client_id'] = client_id
                 session.permanent = True
                 session.modified = True
             else:
-                return jsonify({"error": "会话未初始化，请重新开始咨询"}), 400
+                return jsonify({"error": "Session not initialized"}), 400
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1277,24 +1277,21 @@ def create_simulator(client_id):
                 else:
                     simplified_messages.append(msg)
 
-            max_retries = 3
+            max_retries = 2
             for attempt in range(max_retries):
                 try:
                     response = openai_client.chat.completions.create(
                         model=app.config['OPENAI_MODEL'],
                         messages=simplified_messages,
-                        max_tokens=400,  # 增加到400个token，让回答更详细
-                        timeout=40
+                        max_tokens=400,
+                        timeout=20
                     )
                     return response.choices[0].message.content
                 except Exception as api_error:
                     if attempt < max_retries - 1:
-                        app.logger.warning(f"OpenAI API 尝试 {attempt + 1} 失败: {str(api_error)}，正在重试...")
-                        import time
-                        time.sleep(2)
+                        app.logger.warning(f"OpenAI API attempt {attempt + 1} failed: {str(api_error)}, retrying...")
                     else:
-                        app.logger.error(f"OpenAI API 所有尝试失败: {str(api_error)}")
-                        # 返回一个简单的回应
+                        app.logger.error(f"OpenAI API all attempts failed: {str(api_error)}")
                         return "嗯...这个问题有点难回答。能换个方式问吗？"
                 
         except Exception as error:
@@ -1490,9 +1487,9 @@ def start_session(client_id):
             
             # 设置客户端ID和会话永久性
             session['client_id'] = client_id
+            session['sid'] = os.urandom(24).hex()
+            session['exam_mode'] = False
             session.permanent = True
-            
-            session['exam_mode'] = True
             session.modified = True
             
             simulator = create_simulator(client_id)
@@ -1609,18 +1606,64 @@ def start_session(client_id):
                                 client=client,
                                 initial_message=initial_message)
         
-        # 初始化会话记录
-        session['conversation'] = [
-            {"role": "ai", "content": initial_message}
-        ]
-        
-        # 再次确保会话保存
-        session.modified = True
-        
-        return render_template('chat.html', 
-                            client=client,
-                            initial_message=initial_message)
-        
+        else:
+            # Non-preset (user-created) client
+            client = client_manager.get_client(client_id)
+            if not client:
+                return render_template('error.html',
+                             error_code=404,
+                             error_title="Client Not Found",
+                             error_message="The requested client does not exist.",
+                             error_details=""), 404
+
+            session['client_id'] = client_id
+            session['sid'] = os.urandom(24).hex()
+            session['exam_mode'] = False
+            session.permanent = True
+            session.modified = True
+
+            simulator = create_simulator(client_id)
+            if not simulator:
+                return render_template('error.html',
+                             error_code=500,
+                             error_title="Server Error",
+                             error_message="AI simulator initialization failed.",
+                             error_details=""), 500
+
+            initial_prompt = (
+                "现在你是一位心理咨询来访者，刚见到咨询师。"
+                "请根据你的角色设定，说出自然、有意义的第一句话。"
+                "不要直接暴露核心问题，表现出适当的防御和不确定性。"
+                "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨慎和防御。"
+                "请扮演一位真正需要帮助的来访者，开始你的第一句话："
+            )
+
+            initial_message = None
+            for attempt in range(3):
+                try:
+                    msg = simulator.generate_response([{"role": "user", "content": initial_prompt}])
+                    if msg and len(msg.strip()) >= 5:
+                        initial_message = msg
+                        break
+                except Exception as e:
+                    print(f"Attempt {attempt+1} failed: {e}")
+
+            if not initial_message:
+                backup_messages = [
+                    "您好，我最近总是睡不好，感觉压力很大...",
+                    "嗯...我不知道该从哪里说起，就是感觉最近状态很不好...",
+                    "我想聊聊最近困扰我的一些事情...",
+                    "最近总觉得很焦虑，有些事情想找人倾诉..."
+                ]
+                initial_message = random.choice(backup_messages)
+
+            session['conversation'] = [{"role": "ai", "content": initial_message}]
+            session.modified = True
+
+            return render_template('chat.html',
+                                   client=client,
+                                   initial_message=initial_message)
+
     except Exception as error:
         print(f"严重错误 - start_session 失败: {str(error)}")
         import traceback
@@ -3116,108 +3159,72 @@ def start_exam(client_id):
                 return render_template('error.html', error_code=404, error_title="来访者不存在"), 404
             print(f"成功加载自定义客户端: {client_id}")
 
-        
-            simulator = create_simulator(client_id)
-            if not simulator:
-                print(f"错误 - 模拟器初始化失败")
-                return render_template('error.html',
-                            error_code=500,
-                            error_title="服务器错误",
-                            error_message="AI模拟器初始化失败",
-                            error_details=""), 500
-                
-            print(f"模拟器创建成功")
-                
-                # 修改后的初始提示 - 确保第一句话有意义
-            initial_prompt = (
-                    "现在你是一位心理咨询来访者，刚见到咨询师。"
-                    "请根据你的角色设定，说出自然、有意义的第一句话。"
-                    "不要直接暴露核心问题，表现出适当的防御和不确定性。"
-                    "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨慎和防御。"
-                    "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
-                    "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
-                    "**重要：不要使用以下无意义的开场白：**"
-                    "1. '好的，现在我要扮演一个来访者'"
-                    "2. '抱歉，我不能帮助实现这个请求'"
-                    "3. '会按照所设置的规则来扮演心理咨询来访者'"
-                    "4. '准备好了，可以开始模拟咨询'"
-                    "5. 任何暴露你是在扮演角色的语言"
-                    
-                    "自然的开场白可以是："
-                    "'你好，嗯...我不知道从哪里开始'"
-                    "'最近我总是睡不好觉，感觉很焦虑'"
-                    "'我有些困扰想找人聊聊'"
-                    "'最近压力很大，感觉需要一些帮助'"
-                    
-                    "在以下情况出现时，在话语中表现出对咨询师的不信任、质疑、或敌意："
-                    "1. 在咨询过程中，咨询师的回复没有让你感到共情、支持、被理解时"
-                    "2. 在咨询师的回复机械、刻板、重复、不自然、或缺乏人情味时"
-                    "3. 在咨询师一次提出多个问题，或说了其他让你难以回复的话时"
-                    "4. 在咨询师只顾提问或提建议，而没有更多倾听和共情你的感受时"
-                    "5. 在咨询师遗忘了你的基本情况或你从前提到过的关键信息时"
-                    "6. 根据你的对话风格配置文件，使用适当的阻抗策略，如简短回应、否认问题、转移话题等。"
-                    
-                    "请扮演一位真正需要帮助的来访者，开始你的第一句话："
-            )
-                
-                # 验证函数：确保第一句话有意义
-            def validate_first_message(message):
-                """验证第一句话是否有意义"""
-                if not message or len(message.strip()) < 5:
+        # Create simulator for all clients (preset and custom)
+        simulator = create_simulator(client_id)
+        if not simulator:
+            print(f"错误 - 模拟器初始化失败")
+            return render_template('error.html',
+                        error_code=500,
+                        error_title="服务器错误",
+                        error_message="AI模拟器初始化失败",
+                        error_details=""), 500
+
+        print(f"模拟器创建成功")
+
+        initial_prompt = (
+            "现在你是一位心理咨询来访者，刚见到咨询师。"
+            "请根据你的角色设定，说出自然、有意义的第一句话。"
+            "不要直接暴露核心问题，表现出适当的防御和不确定性。"
+            "在咨询刚开始(尤其是第一次咨询时)，话语要更简短，并表现出更多的谨慎和防御。"
+            "牢记你是正在寻求心理帮助的角色，因为你知道自己需要帮助，你会相对主动的陈述你的需求或者觉得不舒服的地方。"
+            "请基于你的设定和故事背景，尽可能充分的表达自己的诉求和过往经历，语言尽可能丰富。"
+            "**重要：不要使用以下无意义的开场白：**"
+            "1. '好的，现在我要扮演一个来访者'"
+            "2. '抱歉，我不能帮助实现这个请求'"
+            "3. '会按照所设置的规则来扮演心理咨询来访者'"
+            "4. '准备好了，可以开始模拟咨询'"
+            "5. 任何暴露你是在扮演角色的语言"
+            "请扮演一位真正需要帮助的来访者，开始你的第一句话："
+        )
+
+        def validate_first_message(message):
+            if not message or len(message.strip()) < 5:
+                return False
+            invalid_patterns = [
+                r'好的.*扮演.*来访者', r'抱歉.*不能帮助',
+                r'按照.*规则.*扮演', r'准备好了.*开始.*咨询',
+                r'现在我要.*扮演', r'模拟咨询',
+                r'AI.*来访者', r'大语言模型', r'作为.*AI'
+            ]
+            for pattern in invalid_patterns:
+                if re.search(pattern, message.lower()):
                     return False
-                    
-                invalid_patterns = [
-                    r'好的.*扮演.*来访者',
-                    r'抱歉.*不能帮助',
-                    r'按照.*规则.*扮演',
-                    r'准备好了.*开始.*咨询',
-                    r'现在我要.*扮演',
-                    r'模拟咨询',
-                    r'AI.*来访者',
-                    r'大语言模型',
-                    r'作为.*AI'
-                ]
-                    
-                message_lower = message.lower()
-                for pattern in invalid_patterns:
-                    if re.search(pattern, message_lower):
-                        return False
-                    
-                return True
-                
-                # 生成初始消息并验证
-            max_attempts = 3
-            initial_message = None
-                
-            for attempt in range(max_attempts):
-                try:
-                    generated_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
-                    
-                    if validate_first_message(generated_message):
-                        initial_message = generated_message
-                        print(f"第{attempt+1}次尝试：成功生成有效的初始消息")
-                        break
-                    else:
-                        print(f"第{attempt+1}次尝试：初始消息不符合要求，重新生成")
-                        print(f"消息内容：{generated_message[:50]}...")
-                           
-                except Exception as e:
-                    print(f"第{attempt+1}次尝试生成消息失败：{str(e)}")
-                
-            # 如果所有尝试都失败，使用备用消息
-            if not initial_message:
-                print("所有尝试失败，使用备用初始消息")
-                   # 根据客户端问题生成备用消息
-                issue = client.get('issue', '心理困扰')
-                backup_messages = [
-                    f"您好，我最近总是睡不好，感觉压力很大...",
-                    f"嗯...我不知道该从哪里说起，就是感觉最近状态很不好...",
-                    f"我想聊聊最近困扰我的一些事情...",
-                    f"最近总觉得很焦虑，有些事情想找人倾诉..."
-                ]
-                initial_message = random.choice(backup_messages)
-            
-            print(f"最终初始消息：{initial_message[:50]}...")
+            return True
+
+        initial_message = None
+        for attempt in range(3):
+            try:
+                generated_message = simulator.generate_response([{"role": "user", "content": initial_prompt}])
+                if validate_first_message(generated_message):
+                    initial_message = generated_message
+                    print(f"第{attempt+1}次尝试：成功生成有效的初始消息")
+                    break
+                else:
+                    print(f"第{attempt+1}次尝试：初始消息不符合要求，重新生成")
+            except Exception as e:
+                print(f"第{attempt+1}次尝试生成消息失败：{str(e)}")
+
+        if not initial_message:
+            print("所有尝试失败，使用备用初始消息")
+            backup_messages = [
+                "您好，我最近总是睡不好，感觉压力很大...",
+                "嗯...我不知道该从哪里说起，就是感觉最近状态很不好...",
+                "我想聊聊最近困扰我的一些事情...",
+                "最近总觉得很焦虑，有些事情想找人倾诉..."
+            ]
+            initial_message = random.choice(backup_messages)
+
+        print(f"最终初始消息：{initial_message[:50]}...")
 
 
         

@@ -167,28 +167,28 @@
 
 {% block content %}
 <div class="form-container">
-    <a href="/select-client" class="btn-back">← 返回案例列表</a>
+    <a href="/select-client" class="btn-back">← Back to Case List</a>
     
     <h2 class="form-title">
         {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
-        查看来访者详情
+        View Client Details
         {% else %}
-        编辑来访者档案
+        Edit Client Profile
         {% endif %}
     </h2>
     
     <form id="edit-client-form" class="form">
         <input type="hidden" name="client_id" value="{{ client.id }}">
         
-        <!-- 基本信息 -->
+        <!-- Basic Information -->
         <div class="form-group">
-            <label for="name">姓名</label>
+            <label for="name">Name</label>
             <input type="text" id="name" name="name" value="{{ client.name }}" 
                    {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
         </div>
         
         <div class="form-group">
-            <label for="age">年龄</label>
+            <label for="age">Age</label>
             <input type="number" id="age" name="age" 
                    value="{{ client.role_data.base_profile.get('年龄', 30) }}" 
                    min="12" max="88" 
@@ -196,39 +196,39 @@
         </div>
         
         <div class="form-group">
-            <label for="gender">性别</label>
+            <label for="gender">Gender</label>
             <select id="gender" name="gender" {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}disabled class="readonly-field"{% endif %} required>
-                <option value="male" {% if client.role_data.base_profile.get('性别', '女') == '男' %}selected{% endif %}>男</option>
-                <option value="female" {% if client.role_data.base_profile.get('性别', '女') == '女' %}selected{% endif %}>女</option>
+                <option value="male" {% if client.role_data.base_profile.get('性别', '女') == '男' %}selected{% endif %}>Male</option>
+                <option value="female" {% if client.role_data.base_profile.get('性别', '女') == '女' %}selected{% endif %}>Female</option>
             </select>
             {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
             <input type="hidden" name="gender" value="{{ 'male' if client.role_data.base_profile.get('性别', '女') == '男' else 'female' }}">
             {% endif %}
         </div>
         
-        <!-- 关键事件部分 -->
+        <!-- Key Events Section -->
         <div class="key-events-section">
-            <h3 style="margin-bottom: 15px; color: #5b7fff;">关键事件</h3>
+            <h3 style="margin-bottom: 15px; color: #5b7fff;">Key Events</h3>
             <div id="key-events-container">
                 {% set key_events = client.role_data.base_profile.get('关键事件', []) %}
                 {% if key_events and key_events | length > 0 %}
                     {% for event in key_events %}
                     <div class="event-item" data-index="{{ loop.index0 }}">
                         <div class="event-header">
-                            <h4>事件 {{ loop.index }}</h4>
+                            <h4>Event {{ loop.index }}</h4>
                             {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
                             <div class="event-actions">
-                                <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                                <button type="button" class="btn btn-danger btn-small remove-event">Delete</button>
                             </div>
                             {% endif %}
                         </div>
                         <div class="form-group">
-                            <label>事件名称</label>
+                            <label>Event Name</label>
                             <input type="text" name="event_name[]" value="{{ event.get('标签', '') }}" 
                                    {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
                         </div>
                         <div class="form-group">
-                            <label>事件内容</label>
+                            <label>Event Content</label>
                             <textarea name="event_content[]" rows="3" 
                                       {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>{{ event.get('摘要', '') }}</textarea>
                         </div>
@@ -236,19 +236,19 @@
                     {% endfor %}
                 {% else %}
                     <div class="empty-message">
-                        <p>暂无关键事件记录</p>
+                        <p>No key events recorded</p>
                     </div>
                 {% endif %}
             </div>
             
             {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
-            <button type="button" id="add-event-btn" class="btn btn-secondary">添加关键事件</button>
+            <button type="button" id="add-event-btn" class="btn btn-secondary">Add Key Event</button>
             {% endif %}
         </div>
         
-        <!-- 核心信念 -->
+        <!-- Core Beliefs -->
         <div class="form-group">
-            <label for="core_beliefs">核心信念</label>
+            <label for="core_beliefs">Core Beliefs</label>
             <textarea id="core_beliefs" name="core_beliefs" rows="6" 
                       {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}readonly class="readonly-field"{% endif %} required>
 {%- set core_beliefs = client.role_data.cognitive_emotional_model.get('核心信念', []) -%}
@@ -257,14 +257,14 @@
 {{ belief }}{% if not loop.last %}{{ '\n' }}{% endif %}
 {%- endfor -%}
 {%- else -%}
-暂无核心信念记录
+No core beliefs recorded
 {%- endif -%}</textarea>
         </div>
         
         <div class="form-actions">
-            <a href="/select-client" class="btn btn-secondary">返回案例列表</a>
+            <a href="/select-client" class="btn btn-secondary">Back to Case List</a>
             {% if client.id not in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
-            <button type="submit" class="btn btn-primary">保存修改</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
             {% endif %}
         </div>
     </form>
@@ -276,7 +276,7 @@
         const eventsContainer = document.getElementById('key-events-container');
         const addEventBtn = document.getElementById('add-event-btn');
         
-        // 系统预设案例：只显示，不编辑
+        // System preset cases: only display, do not edit
         const isPresetClient = '{{ client.id }}' === 'client_djjo' || 
                             '{{ client.id }}' === 'client_lxwn' || 
                             '{{ client.id }}' === 'client_mqq' || 
@@ -284,30 +284,30 @@
                             '{{ client.id }}' === 'client_sxsu' || 
                             '{{ client.id }}' === 'client_syan';
 
-        // 添加关键事件（仅对用户创建案例可用）
+        // Add key event (only for user-created cases)
         if (addEventBtn && !isPresetClient) {
             addEventBtn.addEventListener('click', function() {
                 const eventCount = eventsContainer.querySelectorAll('.event-item').length;
                 const newEventHtml = `
                     <div class="event-item" data-index="${eventCount}">
                         <div class="event-header">
-                            <h4>事件 ${eventCount + 1}</h4>
+                            <h4>Event ${eventCount + 1}</h4>
                             <div class="event-actions">
-                                <button type="button" class="btn btn-danger btn-small remove-event">删除</button>
+                                <button type="button" class="btn btn-danger btn-small remove-event">Delete</button>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>事件名称</label>
+                            <label>Event Name</label>
                             <input type="text" name="event_name[]" value="" required>
                         </div>
                         <div class="form-group">
-                            <label>事件内容</label>
+                            <label>Event Content</label>
                             <textarea name="event_content[]" rows="3" required></textarea>
                         </div>
                     </div>
                 `;
                 
-                // 如果当前显示"暂无关键事件"，先移除该消息
+                // If currently displaying "No key events recorded", remove that message
                 const emptyMessage = eventsContainer.querySelector('.empty-message');
                 if (emptyMessage) {
                     emptyMessage.remove();
@@ -317,16 +317,16 @@
             });
         }
         
-        // 删除关键事件（仅对用户创建案例可用）
+        // Remove key event (only for user-created cases)
         if (!isPresetClient) {
             eventsContainer.addEventListener('click', function(e) {
                 if (e.target.classList.contains('remove-event')) {
                     e.target.closest('.event-item').remove();
                     updateEventNumbers();
                     
-                    // 如果没有事件了，显示空消息
+                    // If no events are left, display empty message
                     if (eventsContainer.querySelectorAll('.event-item').length === 0) {
-                        eventsContainer.innerHTML = '<div class="empty-message"><p>暂无关键事件记录</p></div>';
+                        eventsContainer.innerHTML = '<div class="empty-message"><p>No key events recorded</p></div>';
                     }
                 }
             });
@@ -335,11 +335,11 @@
         function updateEventNumbers() {
             const events = eventsContainer.querySelectorAll('.event-item');
             events.forEach((event, index) => {
-                event.querySelector('h4').textContent = `事件 ${index + 1}`;
+                event.querySelector('h4').textContent = `Event ${index + 1}`;
             });
         }
         
-        // 表单提交处理（仅对用户创建案例可用）
+        // Form submission handling (only for user-created cases)
         if (form && !isPresetClient) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -352,7 +352,7 @@
                     core_beliefs: formData.get('core_beliefs')
                 };
                 
-                // 收集关键事件
+                // Collect key events
                 const eventNames = formData.getAll('event_name[]');
                 const eventContents = formData.getAll('event_content[]');
                 data.key_events = [];
@@ -366,13 +366,13 @@
                     }
                 }
                 
-                // 验证必填字段
+                // Validate required fields
                 if (!data.name || !data.age || !data.gender || !data.core_beliefs.trim()) {
-                    alert('请填写所有必填字段');
+                    alert('Please fill in all required fields');
                     return;
                 }
                 
-                // 发送请求
+                // Send request
                 fetch(`/edit-client/${formData.get('client_id')}`, {
                     method: 'POST',
                     headers: {
@@ -383,22 +383,22 @@
                 .then(response => response.json())
                 .then(result => {
                     if (result.success) {
-                        alert('来访者信息已更新！');
+                        alert('Client information updated!');
                         window.location.href = '/select-client';
                     } else {
-                        alert('保存失败: ' + (result.error || '未知错误'));
+                        alert('Save failed: ' + (result.error || 'Unknown error'));
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('保存过程中发生错误');
+                    alert('An error occurred while saving');
                 });
             });
         } else if (isPresetClient) {
-            // 系统预设案例：禁用表单提交
+            // System preset cases: disable form submission
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                alert('系统预设案例不可编辑');
+                alert('System preset cases cannot be edited');
             });
         }
     });

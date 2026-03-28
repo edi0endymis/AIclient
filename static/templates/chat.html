@@ -10,23 +10,23 @@
     <div class="chat-header">
         <h2>{{ client.name }} <small>{{ client.issue }}</small></h2>
         <div class="header-buttons">
-            <button id="end-session-btn" class="btn btn-secondary" title="结束对话">
+            <button id="end-session-btn" class="btn btn-secondary" title="End Session">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M6 12.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-1v-7A1.5 1.5 0 0 0 7.5 1h-1A1.5 1.5 0 0 0 5 2.5v7h-1a.5.5 0 0 0-.5.5v2Z"/>
                     <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5Zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2Z"/>
                 </svg>
-                结束对话
+                End Session
             </button>
         
         <!-- 导出按钮 -->
-            <button id="export-btn" class="btn btn-secondary" title="导出对话">
+            <button id="export-btn" class="btn btn-secondary" title="Export Conversation">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                     <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
                 </svg>
-                导出对话
+                Export Conversation
             </button>
-                <a href="/select-client" class="btn btn-back">返回案例列表</a>
+                <a href="/select-client" class="btn btn-back">Back to Case List</a>
         </div>
     </div>
     
@@ -38,9 +38,9 @@
     </div>
     
     <div class="input-area">
-        <input type="text" id="user-input" placeholder="请输入您的回应..." autocomplete="off">
+        <input type="text" id="user-input" placeholder="Please enter your response..." autocomplete="off">
         <button id="send-btn" class="btn btn-primary">
-            <span>发送</span>
+            <span>Send</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
             </svg>
@@ -52,30 +52,30 @@
 <div id="report-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>WAI工作联盟评估报告</h3>
+            <h3>WAI Working Alliance Assessment Report</h3>
             <span class="close">&times;</span>
         </div>
         <div class="modal-body">
             <div class="report-section">
-                <h4>基本信息</h4>
+                <h4>Basic Information</h4>
                 <div id="report-basic-info"></div>
             </div>
             <div class="report-section">
-                <h4>关键洞察</h4>
+                <h4>Key Insights</h4>
                 <ul id="report-key-insights"></ul>
             </div>
             <div class="report-section">
-                <h4>专业建议</h4>
+                <h4>Professional Recommendations</h4>
                 <ul id="report-advice"></ul>
             </div>
             <div class="report-section" id="ethical-section" style="display: none;">
-                <h4>伦理注意事项</h4>
+                <h4>Ethical Considerations</h4>
                 <ul id="report-ethical"></ul>
             </div>
         </div>
         <div class="modal-footer">
-            <button id="export-report-btn" class="btn btn-primary">导出PDF报告</button>
-            <button id="close-report-btn" class="btn btn-secondary">关闭</button>
+            <button id="export-report-btn" class="btn btn-primary">Export PDF Report</button>
+            <button id="close-report-btn" class="btn btn-secondary">Close</button>
         </div>
     </div>
 </div>
@@ -97,14 +97,14 @@
 <!-- 导出成功提示模板 -->
 <template id="export-success-template">
     <div class="toast success">
-        对话已成功导出并下载
+        Conversation successfully exported and downloaded
     </div>
 </template>
 
 <!-- 导出失败提示模板 -->
 <template id="export-error-template">
     <div class="toast error">
-        导出失败，请重试
+        Export failed, please try again
     </div>
 </template>
 {% endblock %}

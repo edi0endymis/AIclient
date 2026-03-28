@@ -77,33 +77,33 @@
 
 {% block nav %}
 <nav class="main-nav">
-    <a href="/training" class="btn secondary">训练</a>
-    <a href="/exam" class="btn primary active">考试</a>
+    <a href="/training" class="btn secondary">Training</a>
+    <a href="/exam" class="btn primary active">Exam</a>
 </nav>
 {% endblock %}
 
 {% block content %}
 <div class="selection-container">
-    <a href="/exam" class="btn-back">← 返回考试主页</a>
+    <a href="/exam" class="btn-back">← Back to Exam Home</a>
     
     <div class="exam-notice">
-        <h3>考试模式说明</h3>
-        <p>• 考试时长：<strong>50分钟</strong> | 对话轮次：<strong>最多40轮</strong></p>
-        <p>• 满足任一条件即自动结束考试</p>
-        <p>• 考试结束后将生成详细评估报告</p>
+        <h3>About Exam Mode</h3>
+        <p>• Exam Duration: <strong>50 minutes</strong> | Turns: <strong>Up to 40</strong></p>
+        <p>• Ends automatically when either condition is met</p>
+        <p>• A detailed assessment report will be generated upon completion</p>
     </div>
     
-    <h2>选择考试案例</h2>
+    <h2>Select Exam Case</h2>
     
     <div class="client-list">
         <!-- 系统预设案例 -->
         {% for client in clients %}
         {% if client.id in ['client_djjo', 'client_lxwn', 'client_mqq', 'client_sbjg', 'client_sxsu', 'client_syan'] %}
         <div class="client-card">
-            <div class="exam-badge">考试案例</div>
+            <div class="exam-badge">Exam Case</div>
             <div class="client-name">{{ client.name }}</div>
             <div class="client-issue">{{ client.issue }}</div>
-            <a href="/start-exam/{{ client.id }}" class="btn-exam">开始考试</a>
+            <a href="/start-exam/{{ client.id }}" class="btn-exam">Start Exam</a>
         </div>
         {% endif %}
         {% endfor %}
