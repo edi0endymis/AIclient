@@ -267,10 +267,19 @@ def api_chat():
         print("正在生成AI响应...")
         try:
             ai_response = simulator.generate_response(conversation_history)
-            print(f"AI响应: {ai_response[:100]}...")
+            if ai_response:
+                print(f"AI响应: {ai_response[:100]}...")
+            else:
+                print("generate_fn returned None (likely API auth error)")
         except Exception as e:
             print(f"生成响应失败: {str(e)}")
-            ai_response = "嗯...我暂时不知道该怎么回答这个问题。能换个方式问吗？"
+            ai_response = None
+        
+        if not ai_response:
+            return jsonify({
+                "error": "AI service unavailable. Please check your API key configuration.",
+                "success": False
+            }), 503
         
         # ============ 新增：调用长时记忆集成 ============
         try:
@@ -306,8 +315,7 @@ def api_chat():
         
         current_app.logger.error(f"/api/chat fatal error: {e}")
         return jsonify({
-            "error": "内部服务器错误",
-            "reply": "抱歉，服务器遇到了问题。请稍后再试。",
+            "error": "Internal server error. Please try again later.",
             "success": False
         }), 500
 
@@ -1291,16 +1299,20 @@ def create_simulator(client_id):
                     )
                     return response.choices[0].message.content
                 except Exception as api_error:
+                    error_str = str(api_error)
+                    is_auth_error = '401' in error_str or 'authentication' in error_str.lower() or 'api_key' in error_str.lower()
+                    if is_auth_error:
+                        app.logger.error(f"OpenAI API authentication failed (check OPENAI_API_KEY): {error_str}")
+                        return None
                     if attempt < max_retries - 1:
-                        app.logger.warning(f"OpenAI API attempt {attempt + 1} failed: {str(api_error)}, retrying...")
+                        app.logger.warning(f"OpenAI API attempt {attempt + 1} failed: {error_str}, retrying...")
                     else:
-                        app.logger.error(f"OpenAI API all attempts failed: {str(api_error)}")
-                        return "嗯...这个问题有点难回答。能换个方式问吗？"
+                        app.logger.error(f"OpenAI API all attempts failed: {error_str}")
+                        return None
                 
         except Exception as error:
-            app.logger.error(f"生成响应失败: {str(error)}")
-            # 返回友好的错误消息
-            return "抱歉，我暂时不知道该怎么回答这个问题。"
+            app.logger.error(f"OpenAI response generation failed: {str(error)}")
+            return None
     
     print(f"准备创建 AIRoleSimulator")
     try:

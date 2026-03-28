@@ -479,6 +479,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(error.error || 'Request failed: ' + response.status);
             }
             
+            if (response.status === 503) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || 'AI service unavailable. Please check API key configuration.');
+            }
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('API响应文本:', errorText);
