@@ -934,6 +934,20 @@ class ClientManager:
                 "issue": "综合-认知模型CCD",
                 "role_data": convert_patientpsi_to_standard(),
                 "created_at": datetime.now().isoformat()
+            },
+            "client_syan_psydt": {
+                "id": "client_syan_psydt",
+                "name": "syan-PsyDT",
+                "issue": "心境障碍-标准化后",
+                "role_data": convert_psydt_syan_to_standard(),
+                "created_at": datetime.now().isoformat()
+            },
+            "client_syan_psi": {
+                "id": "client_syan_psi",
+                "name": "syan-PatientΨ",
+                "issue": "心境障碍-认知模型CCD",
+                "role_data": convert_patientpsi_syan_to_standard(),
+                "created_at": datetime.now().isoformat()
             }
         }
         
