@@ -2,6 +2,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="/static/css/chat.css">
+<script src="/static/js/chart.umd.min.js"></script>
 <script src="/static/js/chat.js"></script>
 {% endblock %}
 
@@ -50,29 +51,87 @@
 
 
 <div id="report-modal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content modal-content-wide">
         <div class="modal-header">
-            <h3>WAI Working Alliance Assessment Report</h3>
+            <h3>&#128202; Session Assessment Report</h3>
             <span class="close">&times;</span>
         </div>
+
+        <!-- Tab Navigation -->
+        <div class="report-tabs">
+            <button class="report-tab-btn active" data-tab="overview">&#128203; Overview</button>
+            <button class="report-tab-btn" data-tab="skills">&#127919; Skills Analysis</button>
+            <button class="report-tab-btn" data-tab="history">&#128200; Progress History</button>
+        </div>
+
         <div class="modal-body">
-            <div class="report-section">
-                <h4>Basic Information</h4>
-                <div id="report-basic-info"></div>
+            <!-- Tab 1: Overview -->
+            <div id="tab-overview" class="report-tab-content active">
+                <div class="overview-layout">
+                    <div class="overview-left">
+                        <div class="report-section">
+                            <h4>Session Summary</h4>
+                            <div id="report-basic-info"></div>
+                        </div>
+                        <div class="report-section" id="overall-assessment-section">
+                            <h4>&#128221; Overall Assessment</h4>
+                            <p id="overall-assessment-text" style="line-height:1.7; color:#444;"></p>
+                        </div>
+                    </div>
+                    <div class="overview-right">
+                        <h4 style="text-align:center; margin-bottom:8px;">&#127919; Competency Radar</h4>
+                        <div class="chart-container" style="height:240px;">
+                            <canvas id="radar-chart-overview"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="report-two-col" style="margin-top:12px;">
+                    <div class="report-section">
+                        <h4>&#9733; Strengths</h4>
+                        <ul id="report-key-insights"></ul>
+                    </div>
+                    <div class="report-section">
+                        <h4>&#128161; Recommendations</h4>
+                        <ul id="report-advice"></ul>
+                    </div>
+                </div>
+                <div class="report-section" id="ethical-section" style="display: none;">
+                    <h4>&#9888; Ethical Considerations</h4>
+                    <ul id="report-ethical"></ul>
+                </div>
             </div>
-            <div class="report-section">
-                <h4>Key Insights</h4>
-                <ul id="report-key-insights"></ul>
+
+            <!-- Tab 2: Skills Analysis -->
+            <div id="tab-skills" class="report-tab-content">
+                <div class="chart-layout">
+                    <div class="chart-panel">
+                        <h4 style="text-align:center; margin-bottom:10px;">Counseling Competency Radar</h4>
+                        <div class="chart-container">
+                            <canvas id="radar-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="skill-details-panel">
+                        <h4>Dimension Details</h4>
+                        <div id="skill-details"></div>
+                    </div>
+                </div>
             </div>
-            <div class="report-section">
-                <h4>Professional Recommendations</h4>
-                <ul id="report-advice"></ul>
-            </div>
-            <div class="report-section" id="ethical-section" style="display: none;">
-                <h4>Ethical Considerations</h4>
-                <ul id="report-ethical"></ul>
+
+            <!-- Tab 3: Progress History -->
+            <div id="tab-history" class="report-tab-content">
+                <div class="history-header">
+                    <p style="color:#666; font-size:13px;">Tracks your last 10 sessions (stored locally in your browser).</p>
+                    <button id="clear-history-btn" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;">Clear History</button>
+                </div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="line-chart"></canvas>
+                </div>
+                <div id="history-empty" style="display:none; text-align:center; color:#aaa; padding:40px 0;">
+                    &#128203; No history yet. Complete more sessions to see your progress trend.
+                </div>
             </div>
         </div>
+
         <div class="modal-footer">
             <button id="export-report-btn" class="btn btn-primary">Export PDF Report</button>
             <button id="close-report-btn" class="btn btn-secondary">Close</button>
@@ -110,7 +169,108 @@
 {% endblock %}
 
 <style>
-    /* 新增样式 */
+    /* ===== Report Modal Tabs & Charts ===== */
+    .modal-content-wide {
+        max-width: 820px;
+        width: 95%;
+    }
+    .report-tabs {
+        display: flex;
+        border-bottom: 2px solid #e8ecf0;
+        padding: 0 20px;
+        background: #f8faff;
+    }
+    .report-tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+    .report-tab-btn:hover { color: #5b7fff; }
+    .report-tab-btn.active {
+        color: #5b7fff;
+        border-bottom-color: #5b7fff;
+        font-weight: 600;
+    }
+    .report-tab-content { display: none; }
+    .report-tab-content.active { display: block; }
+    .overview-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        align-items: start;
+    }
+    .overview-left {}
+    .overview-right { background: #f8faff; border-radius: 10px; padding: 14px; }
+    @media (max-width: 640px) { .overview-layout { grid-template-columns: 1fr; } }
+    .report-two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .chart-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+    .chart-panel { text-align: center; }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .skill-details-panel h4 { margin-bottom: 12px; }
+    .skill-detail-item {
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        background: #f8faff;
+        border-radius: 8px;
+        border-left: 4px solid #5b7fff;
+    }
+    .skill-detail-item .skill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    .skill-detail-item .skill-name { font-weight: 600; font-size: 13px; }
+    .skill-detail-item .skill-score {
+        font-weight: 700;
+        font-size: 15px;
+        color: #5b7fff;
+    }
+    .skill-detail-item .skill-bar {
+        height: 6px;
+        background: #e8ecf0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 5px 0;
+    }
+    .skill-detail-item .skill-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #5b7fff, #8b5cf6);
+        transition: width 0.6s ease;
+    }
+    .skill-detail-item .skill-comment { font-size: 12px; color: #666; line-height: 1.5; }
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    @media (max-width: 600px) {
+        .report-two-col, .chart-layout { grid-template-columns: 1fr; }
+        .modal-content-wide { width: 98%; }
+    }
+    /* ===== Original Styles ===== */
     .chat-header {
         display: flex;
         justify-content: space-between;

@@ -231,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const userMessages = document.querySelectorAll('.message.user');
         const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
         const totalTurns = Math.min(userMessages.length, aiMessages.length);
-        
         return {
             client_name: clientName,
             client_issue: 'Unknown issue',
@@ -243,130 +242,271 @@ document.addEventListener('DOMContentLoaded', () => {
             ethical_violations: []
         };
     }
-    
-    // 显示报告弹窗 - 修复版
-    function showReportModal(reportData) {
-        const modal = document.getElementById('report-modal');
-        if (!modal) {
-            console.error('报告弹窗元素未找到');
+
+    // ===== localStorage History Helpers =====
+    const HISTORY_KEY = 'aiclient_session_history';
+    const MAX_HISTORY = 10;
+
+    function saveSessionToHistory(entry) {
+        try {
+            const hist = loadSessionHistory();
+            hist.push(entry);
+            if (hist.length > MAX_HISTORY) hist.splice(0, hist.length - MAX_HISTORY);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+        } catch (e) { console.warn('localStorage save failed:', e); }
+    }
+
+    function loadSessionHistory() {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+
+    // ===== Chart instances =====
+    let radarChartInstance = null;
+    let radarChartOverviewInstance = null;
+    let lineChartInstance = null;
+
+    function renderRadarChart(sixScores) {
+        const canvas = document.getElementById('radar-chart');
+        if (!canvas || typeof Chart === 'undefined') return;
+        if (radarChartInstance) { radarChartInstance.destroy(); radarChartInstance = null; }
+        const vals = [
+            parseFloat(((sixScores.bond      || 1) / 7  * 10).toFixed(1)),
+            parseFloat(((sixScores.task      || 1) / 7  * 10).toFixed(1)),
+            parseFloat(((sixScores.goal      || 1) / 7  * 10).toFixed(1)),
+            parseFloat((sixScores.empathy    || 5).toFixed(1)),
+            parseFloat((sixScores.listening  || 5).toFixed(1)),
+            parseFloat((sixScores.ethics     || 7).toFixed(1))
+        ];
+        radarChartInstance = new Chart(canvas, {
+            type: 'radar',
+            data: {
+                labels: ['Bond', 'Task', 'Goal', 'Empathy', 'Listening', 'Ethics'],
+                datasets: [{ label: 'This Session', data: vals,
+                    backgroundColor: 'rgba(91,127,255,0.18)', borderColor: '#5b7fff',
+                    borderWidth: 2, pointBackgroundColor: '#5b7fff', pointRadius: 4 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { r: { min: 0, max: 10,
+                    ticks: { stepSize: 2, font: { size: 10 } },
+                    pointLabels: { font: { size: 12, weight: 'bold' } },
+                    grid: { color: 'rgba(0,0,0,0.08)' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderRadarChartOverview(sixScores) {
+        const canvas = document.getElementById('radar-chart-overview');
+        if (!canvas || typeof Chart === 'undefined') return;
+        if (radarChartOverviewInstance) { radarChartOverviewInstance.destroy(); radarChartOverviewInstance = null; }
+        const vals = [
+            parseFloat(((sixScores.bond      || 1) / 7  * 10).toFixed(1)),
+            parseFloat(((sixScores.task      || 1) / 7  * 10).toFixed(1)),
+            parseFloat(((sixScores.goal      || 1) / 7  * 10).toFixed(1)),
+            parseFloat((sixScores.empathy    || 5).toFixed(1)),
+            parseFloat((sixScores.listening  || 5).toFixed(1)),
+            parseFloat((sixScores.ethics     || 7).toFixed(1))
+        ];
+        radarChartOverviewInstance = new Chart(canvas, {
+            type: 'radar',
+            data: {
+                labels: ['Bond', 'Task', 'Goal', 'Empathy', 'Listening', 'Ethics'],
+                datasets: [{ label: 'Score', data: vals,
+                    backgroundColor: 'rgba(91,127,255,0.18)', borderColor: '#5b7fff',
+                    borderWidth: 2, pointBackgroundColor: '#5b7fff', pointRadius: 4 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { r: { min: 0, max: 10,
+                    ticks: { stepSize: 2, font: { size: 9 } },
+                    pointLabels: { font: { size: 11, weight: 'bold' } },
+                    grid: { color: 'rgba(0,0,0,0.08)' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderLineChart(history) {
+        const canvas = document.getElementById('line-chart');
+        const emptyMsg = document.getElementById('history-empty');
+        if (!canvas || typeof Chart === 'undefined') return;
+        if (lineChartInstance) { lineChartInstance.destroy(); lineChartInstance = null; }
+        if (!history || history.length < 2) {
+            canvas.style.display = 'none';
+            if (emptyMsg) emptyMsg.style.display = 'block';
             return;
         }
-        
-        const basicInfo = document.getElementById('report-basic-info');
-        const keyInsights = document.getElementById('report-key-insights');
-        const advice = document.getElementById('report-advice');
-        const ethical = document.getElementById('report-ethical');
+        canvas.style.display = 'block';
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        const labels = history.map(function(h, i) { return h.date || ('Session ' + (i + 1)); });
+        function mk(key, scale) {
+            return history.map(function(h) { return parseFloat(((h[key] || 1) / scale * 10).toFixed(1)); });
+        }
+        lineChartInstance = new Chart(canvas, {
+            type: 'line',
+            data: { labels: labels, datasets: [
+                { label: 'Bond',      data: mk('bond', 7),       borderColor: '#5b7fff', tension: 0.3, fill: false, pointRadius: 4 },
+                { label: 'Task',      data: mk('task', 7),       borderColor: '#8b5cf6', tension: 0.3, fill: false, pointRadius: 4 },
+                { label: 'Goal',      data: mk('goal', 7),       borderColor: '#06b6d4', tension: 0.3, fill: false, pointRadius: 4 },
+                { label: 'Empathy',   data: mk('empathy', 10),   borderColor: '#10b981', tension: 0.3, fill: false, pointRadius: 4 },
+                { label: 'Listening', data: mk('listening', 10), borderColor: '#f59e0b', tension: 0.3, fill: false, pointRadius: 4 },
+                { label: 'Ethics',    data: mk('ethics', 10),    borderColor: '#ef4444', tension: 0.3, fill: false, pointRadius: 4 }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    y: { min: 0, max: 10, ticks: { stepSize: 2 }, title: { display: true, text: 'Score (0-10)' } },
+                    x: { ticks: { maxRotation: 30, font: { size: 11 } } }
+                },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+            }
+        });
+    }
+
+    function showReportModal(reportData) {
+        const modal = document.getElementById('report-modal');
+        if (!modal) return;
+        document.querySelectorAll('.report-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.report-tab-content').forEach(function(c) { c.classList.remove('active'); });
+        var firstTabBtn = document.querySelector('.report-tab-btn[data-tab="overview"]');
+        var firstTabEl  = document.getElementById('tab-overview');
+        if (firstTabBtn) firstTabBtn.classList.add('active');
+        if (firstTabEl)  firstTabEl.classList.add('active');
+        const basicInfo     = document.getElementById('report-basic-info');
+        const keyInsights   = document.getElementById('report-key-insights');
+        const advice        = document.getElementById('report-advice');
+        const ethical       = document.getElementById('report-ethical');
         const ethicalSection = document.getElementById('ethical-section');
-        
-        // 清空之前的内容
-        if (basicInfo) basicInfo.innerHTML = '';
-        if (keyInsights) keyInsights.innerHTML = '';
-        if (advice) advice.innerHTML = '';
-        if (ethical) ethical.innerHTML = '';
-        
-        // 填充基本信息
-        let basicHTML = `
-            <p><strong>Client:</strong> ${reportData.client_name || 'Not specified'}</p>
-            <p><strong>Main Issue:</strong> ${reportData.client_issue || 'Issue not specified'}</p>
-            <p><strong>Session Date:</strong> ${reportData.conversation_date || new Date().toLocaleString()}</p>
-            <p><strong>Turns:</strong> ${reportData.total_turns || 0}</p>
-            <p><strong>Est. Duration:</strong> ${reportData.estimated_time || '0 min'}</p>
-        `;
-        
-        // 如果有WAI评估，显示WAI评分
-        if (reportData.wai_assessment) {
-            const wai = reportData.wai_assessment;
-            const scores = wai.wai_scores || {};
-            
-            basicHTML += `
-                <div class="wai-scores">
-                    <p><strong>WAI Working Alliance Score:</strong></p>
-                    <p>Bond: ${scores.bond || 'N/A'}/7</p>
-                    <p>Task: ${scores.task || 'N/A'}/7</p>
-                    <p>Goal: ${scores.goal || 'N/A'}/7</p>
-                    <p><strong>Total:</strong> ${wai.wai_total || 'N/A'}/21 (${wai.wai_percentage || 'N/A'}%)</p>
-                </div>
-            `;
+        const overallText   = document.getElementById('overall-assessment-text');
+        const wai       = reportData.wai_assessment || {};
+        const waiScores = wai.wai_scores || {};
+        const waiPct    = wai.wai_percentage || 'N/A';
+        if (basicInfo) {
+            const waiHTML = waiScores.bond !== undefined ?
+                '<div class="wai-scores"><p><strong>WAI Working Alliance</strong></p>' +
+                '<p>Bond: <strong>' + (+waiScores.bond).toFixed(2) + '</strong>/7' +
+                ' &nbsp; Task: <strong>' + (+waiScores.task).toFixed(2) + '</strong>/7' +
+                ' &nbsp; Goal: <strong>' + (+waiScores.goal).toFixed(2) + '</strong>/7</p>' +
+                '<p><strong>Total: ' + (wai.wai_total || 'N/A') + ' pts (' + waiPct + '%)</strong></p></div>' : '';
+            basicInfo.innerHTML =
+                '<p><strong>Client:</strong> '           + (reportData.client_name || 'N/A')                    + '</p>' +
+                '<p><strong>Issue:</strong> '            + (reportData.client_issue || 'N/A')                   + '</p>' +
+                '<p><strong>Date:</strong> '             + (reportData.conversation_date || new Date().toLocaleString()) + '</p>' +
+                '<p><strong>Turns completed:</strong> '  + (reportData.total_turns || 0)                        + '</p>' + waiHTML;
         }
-        
-        if (basicInfo) basicInfo.innerHTML = basicHTML;
-        
-        // 填充关键洞察
         if (keyInsights) {
-            const insights = reportData.key_insights || [];
-            insights.forEach(insight => {
-                const li = document.createElement('li');
-                li.textContent = insight;
-                keyInsights.appendChild(li);
+            keyInsights.innerHTML = '';
+            (reportData.key_insights || wai.strengths || []).forEach(function(s) {
+                const li = document.createElement('li'); li.textContent = s; keyInsights.appendChild(li);
             });
         }
-        
-        // 填充专业建议
         if (advice) {
-            const suggestions = reportData.professional_advice || [];
-            suggestions.forEach(adv => {
-                const li = document.createElement('li');
-                li.textContent = adv;
-                advice.appendChild(li);
+            advice.innerHTML = '';
+            (reportData.professional_advice || wai.suggestions || []).forEach(function(s) {
+                const li = document.createElement('li'); li.textContent = s; advice.appendChild(li);
             });
         }
-        
-        // 填充伦理注意事项
         if (ethicalSection && ethical) {
             const violations = reportData.ethical_violations || [];
-            if (violations.length > 0) {
-                ethicalSection.style.display = 'block';
-                violations.forEach(violation => {
-                    const li = document.createElement('li');
-                    li.textContent = violation;
-                    ethical.appendChild(li);
-                });
-            } else {
-                ethicalSection.style.display = 'none';
-            }
+            ethicalSection.style.display = violations.length > 0 ? 'block' : 'none';
+            ethical.innerHTML = '';
+            violations.forEach(function(v) { const li = document.createElement('li'); li.textContent = v; ethical.appendChild(li); });
         }
-        
-        // 显示弹窗
+        if (overallText) { overallText.textContent = wai.overall_assessment || ''; }
+        const skillScores = wai.skill_scores || {};
+        const sixScores = {
+            bond:      waiScores.bond      || 4,
+            task:      waiScores.task      || 4,
+            goal:      waiScores.goal      || 4,
+            empathy:   skillScores.empathy   || 5,
+            listening: skillScores.listening || 5,
+            ethics:    skillScores.ethics    || 7
+        };
+        const skillDetails = document.getElementById('skill-details');
+        if (skillDetails) {
+            const dims = [
+                { key: 'bond',      label: 'Bond (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).bond      || '' },
+                { key: 'task',      label: 'Task (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).task      || '' },
+                { key: 'goal',      label: 'Goal (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).goal      || '' },
+                { key: 'empathy',   label: 'Empathy',          scale: 10, comment: skillScores.empathy_comment   || '' },
+                { key: 'listening', label: 'Active Listening', scale: 10, comment: skillScores.listening_comment || '' },
+                { key: 'ethics',    label: 'Ethics',           scale: 10, comment: skillScores.ethics_comment    || '' }
+            ];
+            skillDetails.innerHTML = dims.map(function(d) {
+                const raw = sixScores[d.key];
+                const pct = Math.round((raw / d.scale) * 100);
+                return '<div class="skill-detail-item">' +
+                    '<div class="skill-header">' +
+                    '<span class="skill-name">' + d.label + '</span>' +
+                    '<span class="skill-score">' + (raw.toFixed ? raw.toFixed(2) : raw) + '/' + d.scale + '</span>' +
+                    '</div>' +
+                    '<div class="skill-bar"><div class="skill-bar-fill" style="width:' + pct + '%"></div></div>' +
+                    (d.comment ? '<div class="skill-comment">' + d.comment + '</div>' : '') +
+                    '</div>';
+            }).join('');
+        }
+        const histEntry = { date: new Date().toLocaleDateString(),
+            bond: sixScores.bond, task: sixScores.task, goal: sixScores.goal,
+            empathy: sixScores.empathy, listening: sixScores.listening, ethics: sixScores.ethics };
+        saveSessionToHistory(histEntry);
+        const history = loadSessionHistory();
+        document.querySelectorAll('.report-tab-btn').forEach(function(btn) {
+            btn.onclick = function() {
+                document.querySelectorAll('.report-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.report-tab-content').forEach(function(c) { c.classList.remove('active'); });
+                btn.classList.add('active');
+                const t = document.getElementById('tab-' + btn.dataset.tab);
+                if (t) t.classList.add('active');
+                if (btn.dataset.tab === 'skills')  setTimeout(function() { renderRadarChart(sixScores); }, 50);
+                if (btn.dataset.tab === 'history') setTimeout(function() { renderLineChart(history); }, 50);
+            };
+        });
+        const clearBtn = document.getElementById('clear-history-btn');
+        if (clearBtn) {
+            clearBtn.onclick = function() {
+                if (confirm('Clear all session history?')) {
+                    localStorage.removeItem(HISTORY_KEY);
+                    renderLineChart([]);
+                    showToast('History cleared', 'info');
+                }
+            };
+        }
         modal.style.display = 'block';
+        setTimeout(function() { renderRadarChartOverview(sixScores); }, 80);
     }
-    
+
     // 导出对话功能
     function exportConversation() {
         try {
             const messages = chatBox.querySelectorAll('.message');
-            let conversationText = `Psychological Counseling Session Record\n`;
-            conversationText += `Client: ${document.querySelector('.chat-header h2').textContent}\n`;
-            conversationText += `Export Time: ${new Date().toLocaleString()}\n`;
+            let conversationText = 'Psychological Counseling Session Record\n';
+            conversationText += 'Client: ' + document.querySelector('.chat-header h2').textContent + '\n';
+            conversationText += 'Export Time: ' + new Date().toLocaleString() + '\n';
             conversationText += '='.repeat(50) + '\n\n';
-            
-            messages.forEach((message, index) => {
+            messages.forEach(function(message, index) {
                 const role = message.classList.contains('ai') ? 'AI Client' : 'Counselor';
                 const content = message.querySelector('.content').textContent;
-                conversationText += `${index + 1}. [${role}]: ${content}\n\n`;
+                conversationText += (index + 1) + '. [' + role + ']: ' + content + '\n\n';
             });
-            
-            // 创建下载链接
             const blob = new Blob([conversationText], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             const clientName = document.querySelector('.chat-header h2').textContent.split(' ')[0];
             const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             a.href = url;
-            a.download = `${clientName}_session_record_${timestamp}.txt`;
+            a.download = clientName + '_session_record_' + timestamp + '.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
             showToast('Conversation exported successfully!', 'success');
         } catch (error) {
             console.error('Export conversation failed:', error);
             showToast('Export failed, please try again', 'error');
         }
-    }
-    
-    // 导出报告功能
-    async function exportReport() {
+    }    async function exportReport() {
         try {
             const response = await fetch('/api/export-report');
             

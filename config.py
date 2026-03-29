@@ -20,7 +20,7 @@ class Config:
     
     # OpenAI 配置
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 必填
-    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE')
+    OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://yibuapi.com/v1')
     OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o')
     
     # 会话配置 - 确保这些配置正确
