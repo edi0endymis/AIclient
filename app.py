@@ -2314,10 +2314,10 @@ def wai_full_assessment():
         
         # 获取对话记录
         conversation = session.get('conversation', [])
-        if len(conversation) < 4:  # 至少2轮对话
+        if len(conversation) < 2:  # 至少1轮对话
             return jsonify({
                 "error": "对话内容不足",
-                "message": "请至少完成2轮对话后再进行评估"
+                "message": "请至少完成1轮对话后再进行评估"
             }), 400
         
         # 构建对话文本
