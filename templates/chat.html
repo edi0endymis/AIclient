@@ -50,35 +50,141 @@
 
 
 <div id="report-modal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content modal-report">
         <div class="modal-header">
-            <h3>WAI Working Alliance Assessment Report</h3>
-            <span class="close">&times;</span>
+            <div>
+                <h3 style="margin:0;font-size:18px;">Training Session Report</h3>
+                <span style="font-size:12px;color:#888;" id="report-meta"></span>
+            </div>
+            <span class="close" style="font-size:22px;cursor:pointer;">&times;</span>
         </div>
-        <div class="modal-body">
-            <div class="report-section">
-                <h4>Basic Information</h4>
-                <div id="report-basic-info"></div>
-            </div>
-            <div class="report-section">
-                <h4>Key Insights</h4>
-                <ul id="report-key-insights"></ul>
-            </div>
-            <div class="report-section">
-                <h4>Professional Recommendations</h4>
-                <ul id="report-advice"></ul>
-            </div>
-            <div class="report-section" id="ethical-section" style="display: none;">
-                <h4>Ethical Considerations</h4>
-                <ul id="report-ethical"></ul>
-            </div>
+        <div class="modal-body" id="report-body">
+            <!-- JS renders all content here -->
         </div>
         <div class="modal-footer">
-            <button id="export-report-btn" class="btn btn-primary">Export PDF Report</button>
-            <button id="close-report-btn" class="btn btn-secondary">Close</button>
+            <button id="export-report-btn" class="btn btn-secondary" style="font-size:13px;">Export PDF</button>
+            <button id="close-report-btn" class="btn btn-primary" style="font-size:13px;">Close</button>
         </div>
     </div>
 </div>
+
+<style>
+/* ── Report Modal ── */
+.modal-report {
+    max-width: 780px;
+    width: 92vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+.modal-report .modal-header {
+    padding: 16px 20px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+.modal-report .modal-footer {
+    padding: 12px 20px;
+    margin-top: 0;
+    flex-shrink: 0;
+}
+.modal-report .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 20px 24px;
+}
+/* Overall score ring */
+.score-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8f5ff 100%);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+}
+.score-ring {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring .ring-bg { fill: none; stroke: #e0e7ff; stroke-width: 8; }
+.score-ring .ring-val { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+.score-ring .ring-text {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+}
+.score-ring .ring-num { font-size: 22px; font-weight: 700; color: #2d4bcc; line-height: 1; }
+.score-ring .ring-denom { font-size: 11px; color: #888; }
+.score-overview-text h4 { margin: 0 0 6px; font-size: 16px; color: #1a2b6b; }
+.score-overview-text p { margin: 0; font-size: 13px; color: #555; line-height: 1.6; }
+/* Skill bars */
+.report-section-title {
+    font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase;
+    letter-spacing: 0.6px; margin: 20px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid #eee;
+}
+.skill-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 9px;
+}
+.skill-label { font-size: 12px; color: #444; width: 80px; flex-shrink: 0; }
+.skill-bar-bg { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+.skill-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+.skill-score-num { font-size: 12px; font-weight: 600; width: 34px; text-align: right; flex-shrink: 0; }
+.skill-status { font-size: 13px; width: 18px; flex-shrink: 0; }
+/* WAI */
+.wai-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+.wai-dim {
+    background: #f8f9ff; border-radius: 10px; padding: 12px 14px;
+    border-left: 3px solid #5b7fff;
+}
+.wai-dim-name { font-size: 11px; color: #888; margin-bottom: 4px; }
+.wai-dim-score { font-size: 22px; font-weight: 700; color: #2d4bcc; }
+.wai-dim-max { font-size: 11px; color: #aaa; }
+.wai-dim-note { font-size: 11px; color: #666; margin-top: 4px; line-height: 1.4; }
+/* Weakness analysis cards */
+.weakness-card {
+    border: 1px solid #f0e8ff; border-radius: 10px;
+    margin-bottom: 12px; overflow: hidden;
+}
+.weakness-conclusion {
+    background: #f5f0ff; padding: 10px 14px;
+    font-size: 13px; font-weight: 600; color: #5b2db0;
+}
+.weakness-evidence {
+    padding: 8px 14px; background: #fff;
+    font-size: 12px; color: #555; border-top: 1px solid #f0e8ff;
+}
+.weakness-evidence .ev-label { font-size: 11px; color: #9b6fd4; font-weight: 600; margin-bottom: 2px; }
+.weakness-practice {
+    padding: 8px 14px; background: #f9fff5;
+    font-size: 12px; color: #2d7a4a; border-top: 1px solid #d8f0dd;
+}
+.weakness-practice .pr-label { font-size: 11px; color: #2d9e5a; font-weight: 600; margin-bottom: 2px; }
+/* Example dialogue */
+.dialogue-example {
+    background: #fffdf0; border: 1px solid #ffd; border-radius: 10px;
+    padding: 14px 16px; margin-top: 4px;
+}
+.dialogue-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.dialogue-box { border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.5; }
+.dialogue-box.original { background: #fff0f0; border: 1px solid #ffd0d0; }
+.dialogue-box.improved { background: #f0fff4; border: 1px solid #c6efce; }
+.dialogue-box .db-label { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+.dialogue-box.original .db-label { color: #c0392b; }
+.dialogue-box.improved .db-label { color: #2d7a4a; }
+.dialogue-explanation { font-size: 12px; color: #888; text-align: center; margin-top: 6px; }
+/* Strengths list */
+.strength-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; color: #444; padding: 5px 0;
+}
+.strength-item::before { content: "✓"; color: #2d9e5a; font-weight: 700; flex-shrink: 0; }
+</style>
 
 <!-- 加载指示器模板 -->
 <template id="loading-template">

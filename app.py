@@ -934,20 +934,6 @@ class ClientManager:
                 "issue": "综合-认知模型CCD",
                 "role_data": convert_patientpsi_to_standard(),
                 "created_at": datetime.now().isoformat()
-            },
-            "client_syan_psydt": {
-                "id": "client_syan_psydt",
-                "name": "syan-PsyDT",
-                "issue": "心境障碍-标准化后",
-                "role_data": convert_psydt_syan_to_standard(),
-                "created_at": datetime.now().isoformat()
-            },
-            "client_syan_psi": {
-                "id": "client_syan_psi",
-                "name": "syan-PatientΨ",
-                "issue": "心境障碍-认知模型CCD",
-                "role_data": convert_patientpsi_syan_to_standard(),
-                "created_at": datetime.now().isoformat()
             }
         }
         
@@ -2297,14 +2283,18 @@ def save_wai_feedback():
         if not data:
             return jsonify({"error": "无效数据"}), 400
             
-        # Accept both 'wai_feedback' (old) and 'report_data' (new frontend key)
-        payload = data.get('wai_feedback') or data.get('report_data')
-        if payload:
-            session['last_feedback'] = payload
+        wai_feedback = data.get('wai_feedback')
+        if wai_feedback:
+            # 保存到session
+            session['last_feedback'] = wai_feedback
+            
+            # 更新last_report
             report_data = session.get('last_report', {})
-            report_data['wai_feedback'] = payload
+            report_data['wai_feedback'] = wai_feedback
             session['last_report'] = report_data
+            
             session.modified = True
+            
             return jsonify({"success": True})
             
         return jsonify({"error": "没有反馈数据"}), 400
@@ -2337,40 +2327,67 @@ def wai_full_assessment():
             content = msg.get('content', '')
             conversation_text += f"【第{i}轮】{role}: {content}\n\n"
         
-        # 使用AI分析对话并生成WAI评分及技能评分
-        prompt = f"""你是一位专业的心理咨询督导。请分析以下咨询对话，进行两部分评分。
+        # 使用AI分析对话并生成WAI评分
+        prompt = f"""你是一位资深的心理咨询督导专家。请深度分析以下咨询对话，生成完整的督导报告。
 
-## 对话内容：
-{conversation_text[:3000]}
+## 咨询对话内容：
+{conversation_text[:3500]}
 
-## 第一部分：WAI工作联盟量表（1-7分）
-1. **情感联结 (bond)**: 咨询师与来访者之间的信任、关心、接纳等情感连接
-2. **任务合作 (task)**: 双方对咨询过程中任务的一致程度
-3. **目标一致 (goal)**: 双方对咨询目标的共识程度
+---
 
-## 第二部分：咨询师技能评分（1-10分）
-4. **共情能力 (empathy)**: 咨询师是否有效回应来访者的情绪和感受
-5. **积极倾听 (listening)**: 咨询师是否充分倾听、准确理解、不打断来访者
-6. **伦理规范 (ethics)**: 咨询师是否遵守伦理规范，无越界或不当干预
+## 分析任务一：WAI工作联盟量表（1-7分制）
+- 情感联结(Bond)：咨询师与来访者之间的信任、关心和接纳程度
+- 任务合作(Task)：双方对咨询任务的共识与执行一致性
+- 目标一致(Goal)：双方对咨询目标的理解和共识程度
 
-请返回以下JSON格式（不要省略任何字段）：
+## 分析任务二：咨询师技能评估（0-100分）
+- 共情反映(empathy)：准确捕捉并反映来访者情绪，传递被理解感
+- 澄清探索(clarification)：使用有效的澄清提问，帮助来访者深化探索
+- 阻抗处理(resistance)：识别并有效回应来访者的防御和阻抗行为
+- 危机干预(crisis)：识别高风险内容，做出适当回应和保护
+- 伦理判断(ethics)：维持专业边界，遵守咨询伦理规范
+
+## 分析任务三：薄弱点精析（"结论-证据-练习"三段式，至多3条，只写真实问题）
+- 结论：一句话点明问题（必须引用"第X轮"）
+- 证据：引用对话原文或描述具体情境
+- 练习：可操作的改进练习，包含示范语句
+
+## 分析任务四：示范对话（选取最典型的一个改进点）
+- 引用具体轮次的咨询师原话
+- 给出改进后的示范说法
+- 一句话说明改进原因
+
+请严格按以下JSON格式返回（所有字段必须存在，不可省略）：
 {{
+  "overall_score": 75,
   "wai_scores": {{
-    "bond": {{"score": 5, "rationale": "基于对话的具体理由..."}},
-    "task": {{"score": 5, "rationale": "基于对话的具体理由..."}},
-    "goal": {{"score": 5, "rationale": "基于对话的具体理由..."}}
+    "bond": {{"score": 5, "rationale": "引用具体对话内容..."}},
+    "task": {{"score": 5, "rationale": "引用具体对话内容..."}},
+    "goal": {{"score": 5, "rationale": "引用具体对话内容..."}}
   }},
   "skill_scores": {{
-    "empathy": {{"score": 7, "comment": "基于对话的具体评价..."}},
-    "listening": {{"score": 7, "comment": "基于对话的具体评价..."}},
-    "ethics": {{"score": 8, "comment": "基于对话的具体评价..."}}
+    "empathy":       {{"score": 80, "status": "good", "comment": "具体表现..."}},
+    "clarification": {{"score": 71, "status": "ok",   "comment": "具体表现..."}},
+    "resistance":    {{"score": 65, "status": "weak", "comment": "具体表现..."}},
+    "crisis":        {{"score": 85, "status": "good", "comment": "具体表现..."}},
+    "ethics":        {{"score": 78, "status": "ok",   "comment": "具体表现..."}}
   }},
-  "strengths": ["优势1", "优势2", "优势3"],
-  "improvement_areas": ["需要改进的方面1", "需要改进的方面2"],
-  "overall_assessment": "总体评价..."
-}}
-
-请确保所有评分基于对话实际内容，引用具体对话例子。"""
+  "strengths": ["优势1（引用具体对话）", "优势2"],
+  "weakness_analysis": [
+    {{
+      "conclusion": "第X轮：问题核心一句话描述",
+      "evidence": "咨询师说：'...' 此时来访者...（引用原文）",
+      "practice": "建议：先使用...如：'...（示范语句）'"
+    }}
+  ],
+  "dialogue_example": {{
+    "turn_label": "第X轮",
+    "original": "咨询师原话：'...'",
+    "improved": "建议改为：'...'",
+    "explanation": "改进原因（15字以内）"
+  }},
+  "overall_assessment": "总体评价2-3句，指出本次最大收获和最需改进的一个方向。"
+}}"""
 
         # 调用OpenAI进行分析
         messages = [
@@ -2415,21 +2432,9 @@ def wai_full_assessment():
             interpretation = interpret_wai_scores(wai_scores)
             report = generate_wai_report(wai_scores, interpretation, conversation)
             
-            # 提取技能评分
-            skill_scores_raw = ai_assessment.get('skill_scores', {})
-            skill_scores = {
-                'empathy': skill_scores_raw.get('empathy', {}).get('score', 5),
-                'empathy_comment': skill_scores_raw.get('empathy', {}).get('comment', ''),
-                'listening': skill_scores_raw.get('listening', {}).get('score', 5),
-                'listening_comment': skill_scores_raw.get('listening', {}).get('comment', ''),
-                'ethics': skill_scores_raw.get('ethics', {}).get('score', 7),
-                'ethics_comment': skill_scores_raw.get('ethics', {}).get('comment', ''),
-            }
-            
             # 合并AI评估和WAI计算
             full_assessment = {
                 "ai_assessment": ai_assessment,
-                "skill_scores": skill_scores,
                 "wai_calculated": {
                     "scores": wai_scores,
                     "interpretation": interpretation,
@@ -2529,63 +2534,7 @@ def get_wai_questionnaire():
         "total_items": len(items)
     })
 
-def _build_default_wai_result(turns=0):
-    """Build a sensible default WAI result when AI assessment is unavailable."""
-    import random
-    if turns > 20:
-        bond, task, goal = random.uniform(4.5, 6.5), random.uniform(4.0, 6.0), random.uniform(4.0, 6.0)
-    elif turns > 10:
-        bond, task, goal = random.uniform(3.5, 5.5), random.uniform(3.0, 5.0), random.uniform(3.0, 5.0)
-    else:
-        bond, task, goal = random.uniform(2.5, 4.5), random.uniform(2.0, 4.0), random.uniform(2.0, 4.0)
-    total = round(bond + task + goal, 2)
-    return {
-        "wai_scores": {"bond": round(bond, 2), "task": round(task, 2), "goal": round(goal, 2)},
-        "skill_scores": {"empathy": 5, "empathy_comment": "", "listening": 5, "listening_comment": "", "ethics": 7, "ethics_comment": ""},
-        "wai_total": total,
-        "wai_percentage": round((total / 21) * 100, 1),
-        "dimension_comments": {
-            "bond": "Initial emotional connection established",
-            "task": "Basic task consensus reached",
-            "goal": "Therapeutic direction is broadly clear"
-        },
-        "suggestions": ["Strengthen emotional responsiveness", "Clarify counseling goals more explicitly"],
-        "strengths": ["Basic trust relationship established", "Session completed successfully"],
-        "overall_assessment": "A working alliance has been established; further deepening is recommended."
-    }
-
-
-def generate_simplified_wai_assessment(conversation):
-    """Fallback WAI assessment when AI call fails."""
-    turns = len(conversation) // 2
-    return _build_default_wai_result(turns)
-
-
 # 修改现有的 /api/wai-feedback 路由，使其使用完整的WAI评估
-@app.route('/api/debug', methods=['GET'])
-def api_debug():
-    """诊断端点：显示会话状态和API连通性"""
-    result = {
-        'session_sid': session.get('sid', None),
-        'session_client_id': session.get('client_id', None),
-        'conversation_len': len(session.get('conversation', [])),
-        'api_key_set': bool(app.config.get('OPENAI_API_KEY')),
-        'api_base': app.config.get('OPENAI_API_BASE'),
-        'model': app.config.get('OPENAI_MODEL'),
-    }
-    # Quick connectivity test
-    try:
-        test_resp = openai_client.chat.completions.create(
-            model=app.config.get('OPENAI_MODEL', 'gpt-4o'),
-            messages=[{'role': 'user', 'content': 'say ok'}],
-            max_tokens=5, timeout=10
-        )
-        result['api_test'] = 'ok: ' + test_resp.choices[0].message.content.strip()
-    except Exception as e:
-        result['api_test'] = 'FAILED: ' + str(e)
-    return jsonify(result)
-
-
 @app.route('/api/wai-feedback', methods=['POST'])
 @require_session
 def wai_feedback():
@@ -2596,15 +2545,6 @@ def wai_feedback():
         
         # 如果返回的是Response对象（错误情况）
         if isinstance(response_data, tuple):
-            # 400 usually means conversation too short — return a default instead of error
-            status_code = response_data[1] if len(response_data) > 1 else 500
-            if status_code == 400:
-                conv = session.get('conversation', [])
-                turns = len(conv) // 2
-                default = _build_default_wai_result(turns)
-                session['last_feedback'] = default
-                session.modified = True
-                return jsonify(default)
             return response_data
         
         # 否则返回评估结果
@@ -2613,20 +2553,11 @@ def wai_feedback():
         # 格式化为前端需要的格式
         wai_scores = assessment['wai_calculated']['scores']
         
-        skill = assessment.get('skill_scores', {})
         result = {
             "wai_scores": {
                 "bond": wai_scores['bond_avg'],
                 "task": wai_scores['task_avg'],
                 "goal": wai_scores['goal_avg']
-            },
-            "skill_scores": {
-                "empathy": skill.get('empathy', 5),
-                "empathy_comment": skill.get('empathy_comment', ''),
-                "listening": skill.get('listening', 5),
-                "listening_comment": skill.get('listening_comment', ''),
-                "ethics": skill.get('ethics', 7),
-                "ethics_comment": skill.get('ethics_comment', '')
             },
             "wai_total": wai_scores['total'],
             "wai_percentage": wai_scores['total_percent'],
@@ -2638,7 +2569,11 @@ def wai_feedback():
             "suggestions": assessment['ai_assessment'].get('improvement_areas', []),
             "strengths": assessment['ai_assessment'].get('strengths', []),
             "overall_assessment": assessment['ai_assessment'].get('overall_assessment', ''),
-            "detailed_report": assessment['wai_calculated']['report']
+            "detailed_report": assessment['wai_calculated']['report'],
+            "overall_score": assessment['ai_assessment'].get('overall_score', 0),
+            "skill_scores": assessment['ai_assessment'].get('skill_scores', {}),
+            "weakness_analysis": assessment['ai_assessment'].get('weakness_analysis', []),
+            "dialogue_example": assessment['ai_assessment'].get('dialogue_example', None)
         }
         
         # 保存结果
@@ -2649,14 +2584,7 @@ def wai_feedback():
         
     except Exception as error:
         app.logger.error(f"WAI反馈生成失败: {str(error)}")
-        # Fall back to default assessment on any error
-        try:
-            conv = session.get('conversation', [])
-            turns = len(conv) // 2
-            default = _build_default_wai_result(turns)
-            return jsonify(default)
-        except Exception:
-            return jsonify({"error": f"评估失败: {str(error)}"}), 500
+        return jsonify({"error": f"评估失败: {str(error)}"}), 500
 
 @app.route('/api/export-report', methods=['GET', 'POST'])
 @require_session
