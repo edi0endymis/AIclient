@@ -8,71 +8,286 @@
 {% endblock %}
 
 {% block content %}
-<div class="training-container">
-    <h2>AI Client Simulation Training Ground</h2>
-    <p class="subtitle">Improve your counseling skills through simulated real-world counseling scenarios</p>
-    
-    <div class="action-buttons">
-        <a href="/create-client" class="btn btn-primary btn-large">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-            </svg>
-            Create a New Client
-        </a>
-        <a href="/select-client" class="btn btn-secondary btn-large">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
-                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
-            </svg>
-            Select an Existing Client
-        </a>
+<div class="training-home">
+
+    <!-- 主流程图 -->
+    <div class="flow-banner">
+        <div class="flow-step active-step">
+            <div class="flow-icon">🎯</div>
+            <div class="flow-label">Set Goal</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-icon">👤</div>
+            <div class="flow-label">Match Client</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-icon">💬</div>
+            <div class="flow-label">Practice</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-icon">📊</div>
+            <div class="flow-label">Report</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-icon">🔁</div>
+            <div class="flow-label">Re-train</div>
+        </div>
     </div>
+
+    <!-- 训练目标选择 -->
+    <div class="goal-card">
+        <h2 class="goal-title">What do you want to practice today?</h2>
+        <p class="goal-subtitle">Select your training goal — we'll recommend the best-matched client for you</p>
+
+        <div class="goal-sections">
+
+            <!-- 技能类型 -->
+            <div class="goal-section">
+                <div class="goal-section-label">
+                    <span class="section-icon">🧠</span> Skill Focus
+                </div>
+                <div class="chip-group" id="skill-group">
+                    <button class="chip" data-group="skill" data-value="empathy">Empathic Reflection</button>
+                    <button class="chip" data-group="skill" data-value="clarify">Clarification &amp; Exploration</button>
+                    <button class="chip" data-group="skill" data-value="resistance">Handling Resistance</button>
+                    <button class="chip" data-group="skill" data-value="crisis">Crisis Intervention</button>
+                    <button class="chip" data-group="skill" data-value="ethics">Ethical Judgment</button>
+                </div>
+            </div>
+
+            <!-- 咨询阶段 -->
+            <div class="goal-section">
+                <div class="goal-section-label">
+                    <span class="section-icon">📅</span> Session Phase
+                </div>
+                <div class="chip-group" id="phase-group">
+                    <button class="chip" data-group="phase" data-value="initial">Initial Interview</button>
+                    <button class="chip" data-group="phase" data-value="mid">Mid-Stage</button>
+                    <button class="chip" data-group="phase" data-value="ending">Closing Phase</button>
+                    <button class="chip" data-group="phase" data-value="crisis">Crisis Response</button>
+                </div>
+            </div>
+
+            <!-- 难度 -->
+            <div class="goal-section">
+                <div class="goal-section-label">
+                    <span class="section-icon">⚡</span> Difficulty
+                </div>
+                <div class="chip-group" id="difficulty-group">
+                    <button class="chip chip-green" data-group="difficulty" data-value="beginner">Beginner</button>
+                    <button class="chip chip-orange" data-group="difficulty" data-value="advanced">Advanced</button>
+                    <button class="chip chip-red" data-group="difficulty" data-value="expert">High-Pressure</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="goal-actions">
+            <a id="start-btn" href="/select-client" class="btn btn-primary btn-start">
+                Find Matching Clients
+            </a>
+            <a href="/select-client" class="btn btn-secondary btn-skip">
+                Browse All Clients
+            </a>
+            <a href="/create-client" class="btn btn-secondary btn-skip">
+                Create Custom Client
+            </a>
+        </div>
+    </div>
+
+    <!-- 模式说明 -->
+    <div class="mode-cards">
+        <div class="mode-card mode-train">
+            <div class="mode-icon">📚</div>
+            <h3>Training Mode</h3>
+            <ul>
+                <li>✓ Hints &amp; reference materials visible</li>
+                <li>✓ Pause and resume anytime</li>
+                <li>✓ View scale definitions mid-session</li>
+                <li>✓ Unlimited retries</li>
+                <li>✓ Real-time feedback after each turn</li>
+            </ul>
+        </div>
+        <div class="mode-card mode-exam">
+            <div class="mode-icon">📝</div>
+            <h3>Exam Mode</h3>
+            <ul>
+                <li>✗ Hints hidden</li>
+                <li>✗ No pause — timer runs continuously</li>
+                <li>⏱ Fixed duration (50 min / 40 turns)</li>
+                <li>🎲 Client assigned randomly</li>
+                <li>📄 Standardized transcript generated</li>
+            </ul>
+            <a href="/exam" class="btn btn-primary" style="margin-top:14px;font-size:14px;padding:8px 20px;">Enter Exam Mode</a>
+        </div>
+    </div>
+
 </div>
 
 <style>
-    .training-container {
-        max-width: 800px;
+    .training-home {
+        max-width: 900px;
         margin: 0 auto;
-        padding: 40px 20px;
-        text-align: center;
+        padding: 10px 20px 40px;
     }
-    
-    .training-container h2 {
-        font-size: 32px;
-        color: var(--primary);
-        margin-bottom: 10px;
-    }
-    
-    .subtitle {
-        color: var(--text-light);
-        margin-bottom: 40px;
-        font-size: 16px;
-    }
-    
-    .action-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 30px;  /* 增加按钮间距 */
-        max-width: 400px;
-        margin: 0 auto;
-    }
-    
-    .btn-large {
-        padding: 20px 40px;  /* 增大按钮尺寸 */
-        font-size: 20px;
+
+    /* ── 主流程图 ── */
+    .flow-banner {
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 6px;
+        margin-bottom: 28px;
+        padding: 16px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        flex-wrap: wrap;
     }
-    
-    @media (max-width: 600px) {
-        .training-container h2 {
-            font-size: 26px;
-        }
-        
-        .btn-large {
-            padding: 16px 32px;
-            font-size: 18px;
-        }
+    .flow-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        opacity: 0.45;
+        min-width: 70px;
+    }
+    .flow-step.active-step { opacity: 1; }
+    .flow-icon { font-size: 22px; }
+    .flow-label { font-size: 12px; color: #555; font-weight: 500; }
+    .flow-arrow { font-size: 18px; color: #aaa; padding: 0 2px; }
+
+    /* ── 目标选择卡 ── */
+    .goal-card {
+        background: white;
+        border-radius: 14px;
+        padding: 28px 32px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 24px;
+    }
+    .goal-title {
+        font-size: 22px;
+        color: var(--primary);
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    .goal-subtitle {
+        color: var(--text-light);
+        font-size: 14px;
+        text-align: center;
+        margin-bottom: 26px;
+    }
+    .goal-sections { display: flex; flex-direction: column; gap: 20px; }
+    .goal-section {}
+    .goal-section-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .section-icon { margin-right: 4px; }
+
+    /* ── Chips ── */
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+        padding: 7px 16px;
+        border-radius: 20px;
+        border: 1.5px solid #dce3ff;
+        background: #f5f7ff;
+        color: #445;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        font-family: inherit;
+    }
+    .chip:hover { border-color: var(--primary); color: var(--primary); background: #eef1ff; }
+    .chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+    .chip-green { border-color: #b7eac8; background: #f0faf3; color: #2d7a4a; }
+    .chip-green.selected { background: #2d9e5a; border-color: #2d9e5a; color: white; }
+    .chip-orange { border-color: #ffddb5; background: #fff8f0; color: #b56a10; }
+    .chip-orange.selected { background: #e07b10; border-color: #e07b10; color: white; }
+    .chip-red { border-color: #ffcbcb; background: #fff5f5; color: #c0392b; }
+    .chip-red.selected { background: #c0392b; border-color: #c0392b; color: white; }
+
+    /* ── 操作按钮 ── */
+    .goal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 28px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .btn-start {
+        padding: 12px 28px;
+        font-size: 15px;
+        border-radius: 8px;
+    }
+    .btn-skip {
+        padding: 10px 20px;
+        font-size: 13px;
+        border-radius: 8px;
+    }
+
+    /* ── 模式说明卡 ── */
+    .mode-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .mode-card {
+        background: white;
+        border-radius: 12px;
+        padding: 22px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .mode-card h3 { font-size: 16px; margin: 8px 0 12px; }
+    .mode-card ul { list-style: none; padding: 0; margin: 0; }
+    .mode-card ul li { font-size: 13px; color: #555; padding: 3px 0; }
+    .mode-icon { font-size: 26px; }
+    .mode-train { border-top: 3px solid #5b7fff; }
+    .mode-exam { border-top: 3px solid #f0a040; }
+
+    @media (max-width: 640px) {
+        .mode-cards { grid-template-columns: 1fr; }
+        .goal-card { padding: 20px 16px; }
     }
 </style>
+
+<script>
+    const selections = { skill: null, phase: null, difficulty: null };
+
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const group = chip.dataset.group;
+            // Deselect previous in same group
+            document.querySelectorAll(`.chip[data-group="${group}"]`).forEach(c => c.classList.remove('selected'));
+            // Toggle
+            if (selections[group] === chip.dataset.value) {
+                selections[group] = null;
+            } else {
+                chip.classList.add('selected');
+                selections[group] = chip.dataset.value;
+            }
+            updateStartBtn();
+        });
+    });
+
+    function updateStartBtn() {
+        const btn = document.getElementById('start-btn');
+        const params = new URLSearchParams();
+        if (selections.skill) params.set('skill', selections.skill);
+        if (selections.phase) params.set('phase', selections.phase);
+        if (selections.difficulty) params.set('difficulty', selections.difficulty);
+        const qs = params.toString();
+        btn.href = '/select-client' + (qs ? '?' + qs : '');
+        const anySelected = Object.values(selections).some(v => v !== null);
+        btn.textContent = anySelected ? 'Find Matching Clients' : 'Browse All Clients';
+    }
+</script>
 {% endblock %}
