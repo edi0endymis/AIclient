@@ -2547,8 +2547,12 @@ def wai_feedback():
         if isinstance(response_data, tuple):
             return response_data
         
-        # 否则返回评估结果
-        assessment = response_data.json['assessment']
+        # 否则返回评估结果（用 get_json 兼容所有 Werkzeug 版本）
+        resp_json = response_data.get_json(force=True, silent=True)
+        if not resp_json or 'assessment' not in resp_json:
+            app.logger.error(f"WAI反馈：响应解析失败，resp_json={resp_json}")
+            return jsonify({"error": "评估结果解析失败"}), 500
+        assessment = resp_json['assessment']
         
         # 格式化为前端需要的格式
         wai_scores = assessment['wai_calculated']['scores']
