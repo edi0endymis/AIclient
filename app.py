@@ -354,7 +354,7 @@ def increment_conversation_turns(session_id):
 def require_session(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'sid' not in session or 'client_id' not in session:
+        if 'sid' not in session:
             return jsonify({"error": "Session not initialized"}), 400
         return f(*args, **kwargs)
     return decorated_function
@@ -2931,8 +2931,8 @@ def end_session():
         print(f"会话ID: {session_id}")
         print(f"客户端ID: {client_id}")
         
-        if not session_id or not client_id:
-            print("错误: 会话或客户端信息不完整")
+        if not session_id:
+            print("错误: 会话ID不存在")
             return jsonify({"error": "会话未初始化"}), 400
         
         # 获取对话记录 - 优先从session读取
