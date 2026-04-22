@@ -217,14 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 显示加载指示器
         const loadingElement = showLoadingIndicator();
         
-        const controller = new AbortController();
-        const fetchTimeout = setTimeout(() => controller.abort(), 55000);
         try {
-            console.log('Sending API request...');
+            console.log('发送API请求...'); // 调试信息
             
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                signal: controller.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Session-Check': 'true'
@@ -235,30 +232,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
             
-            console.log('Response status:', response.status);
+            console.log('响应状态:', response.status); // 调试信息
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API error response:', errorText);
-                throw new Error(`Request failed: ${response.status} ${errorText}`);
+                console.error('API错误响应:', errorText); // 调试信息
+                throw new Error(`请求失败: ${response.status} ${errorText}`);
             }
             
             const data = await response.json();
-            console.log('Response received:', data);
+            console.log('成功收到响应:', data); // 调试信息
             
             hideLoadingIndicator(loadingElement);
-            addMessage('ai', data.reply || data.response);
+            addMessage('ai', data.response);
             
         } catch (error) {
-            console.error('Send message error:', error);
+            console.error('发送消息错误详情:', error); // 调试信息
             hideLoadingIndicator(loadingElement);
-            if (error.name === 'AbortError') {
-                showToast('Request timed out. Please try again.', 'error');
-            } else {
-                showToast('Send failed: ' + error.message, 'error');
-            }
+            showToast('发送失败: ' + error.message, 'error');
         } finally {
-            clearTimeout(fetchTimeout);
             sendBtn.disabled = false;
             userInput.focus();
         }

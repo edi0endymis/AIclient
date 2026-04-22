@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
         messageDiv.innerHTML = `
-            <div class="avatar">${role === 'ai' ? 'AI' : 'You'}</div>
+            <div class="avatar">${role === 'ai' ? 'AI' : '你'}</div>
             <div class="content">${content}</div>
         `;
         chatBox.appendChild(messageDiv);
@@ -79,17 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
             wai_total: bondScore + taskScore + goalScore,
             wai_percentage: Math.round(((bondScore + taskScore + goalScore) / 21) * 100),
             dimension_comments: {
-                bond: "An initial emotional bond has been established based on the conversation",
-                task: "Basic consensus on counseling tasks has been reached",
-                goal: "The therapeutic goal direction is basically clear"
+                bond: "基于对话内容，情感联结初步建立",
+                task: "咨询任务合作基本达成共识",
+                goal: "治疗目标方向基本明确"
             },
             suggestions: [
-                "Suggest strengthening the consistency of emotional responses",
-                "Consider articulating counseling goals more clearly",
-                "Strengthen task-oriented collaboration"
+                "建议加强情感回应的一致性",
+                "可以更清晰地阐明咨询目标",
+                "需要加强任务导向的合作"
             ],
-            strengths: ["A basic trust relationship has been established", "Counseling goals are initially clear"],
-            overall_assessment: "The conversation has established a preliminary working alliance; further deepening of the counseling relationship is recommended."
+            strengths: ["能够建立基本信任关系", "咨询目标初步明确"],
+            overall_assessment: "对话初步建立了工作联盟，建议继续深化咨询关系。"
         };
     }
     
@@ -104,26 +104,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const scores = waiAssessment.wai_scores;
             
             if (scores.bond >= 5) {
-                insights.push("Good emotional bond established; a solid trust relationship has been formed");
+                insights.push("情感联结良好，建立了较好的信任关系");
             } else {
-                insights.push("Emotional bond needs strengthening; the trust relationship requires further development");
+                insights.push("情感联结有待加强，信任关系需要进一步建立");
             }
             
             if (scores.task >= 5) {
-                insights.push("Task collaboration is effective and counseling tasks are clear");
+                insights.push("任务合作有效，咨询任务明确");
             } else {
-                insights.push("Task collaboration needs improvement; counseling tasks could be clearer");
+                insights.push("任务合作需要加强，咨询任务可更清晰");
             }
             
             if (scores.goal >= 5) {
-                insights.push("Good goal alignment; the therapeutic direction is clear");
+                insights.push("目标一致性好，治疗方向明确");
             } else {
-                insights.push("Goal alignment needs improvement; therapeutic direction could be further clarified");
+                insights.push("目标一致性需提升，治疗方向可进一步明确");
             }
         } else {
-            insights.push("Completed " + totalTurns + " turns of conversation");
-            insights.push("The conversation has ended normally");
-            insights.push("Suggest reviewing the conversation for reflection");
+            insights.push("完成了" + totalTurns + "轮对话");
+            insights.push("对话已正常结束");
+            insights.push("建议回顾对话内容进行反思");
         }
         
         return insights;
@@ -135,11 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         return [
-            "Consider using more open-ended questions",
-            "Pay attention to managing conversation pace",
-            "Strengthen emotional response skills",
-            "Improve listening and empathy skills",
-            "Pay attention to non-verbal cues"
+            "建议增加开放式问题的使用",
+            "注意对话节奏的控制", 
+            "加强情感回应技巧",
+            "提升倾听和共情能力",
+            "注意非语言信息的观察"
         ];
     }
     
@@ -149,10 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("开始结束会话并生成WAI评估...");
             
             // 显示加载提示
-            showToast('Generating WAI assessment report...', 'info');
+            showToast('正在生成WAI评估报告...', 'info');
             
             // 1. 获取对话基本信息
-            const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || 'Client';
+            const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者';
             const userMessages = document.querySelectorAll('.message.user');
             const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
             const totalTurns = Math.min(userMessages.length, aiMessages.length);
@@ -184,10 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. 构建完整报告数据
             const reportData = {
                 client_name: clientName,
-                client_issue: document.querySelector('.chat-header small')?.textContent || 'Issue not specified',
-                conversation_date: new Date().toLocaleString(),
+                client_issue: document.querySelector('.chat-header small')?.textContent || '未指定问题',
+                conversation_date: new Date().toLocaleString('zh-CN'),
                 total_turns: totalTurns,
-                estimated_time: `${totalTurns * 2} min`,
+                estimated_time: `${totalTurns * 2} 分钟`,
                 wai_assessment: waiAssessment,
                 key_insights: generateKeyInsights(totalTurns, waiAssessment),
                 professional_advice: generateProfessionalAdvice(waiAssessment),
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
         } catch (error) {
             console.error('结束会话错误:', error);
-            showToast('Report generation failed: ' + error.message, 'error');
+            showToast('生成报告失败: ' + error.message, 'error');
             
             // 显示基本的报告弹窗
             const fallbackReport = await generateFallbackReport();
@@ -227,306 +227,168 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 备用报告生成函数
     async function generateFallbackReport() {
-        const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || 'Client';
+        const clientName = document.querySelector('.chat-header h2')?.textContent.split(' ')[0] || '来访者';
         const userMessages = document.querySelectorAll('.message.user');
         const aiMessages = document.querySelectorAll('.message.ai:not(.loading)');
         const totalTurns = Math.min(userMessages.length, aiMessages.length);
+        
         return {
             client_name: clientName,
-            client_issue: 'Unknown issue',
-            conversation_date: new Date().toLocaleString(),
+            client_issue: '未知问题',
+            conversation_date: new Date().toLocaleString('zh-CN'),
             total_turns: totalTurns,
-            estimated_time: `${totalTurns * 2} min`,
-            key_insights: ['Report generation failed, but the conversation ended successfully'],
-            professional_advice: ['Please review the conversation for self-analysis'],
+            estimated_time: `${totalTurns * 2} 分钟`,
+            key_insights: ['报告生成失败，但对话已成功结束'],
+            professional_advice: ['请回顾对话内容自行分析'],
             ethical_violations: []
         };
     }
-
-    // ===== localStorage History Helpers =====
-    const HISTORY_KEY = 'aiclient_session_history';
-    const MAX_HISTORY = 10;
-
-    function saveSessionToHistory(entry) {
-        try {
-            const hist = loadSessionHistory();
-            hist.push(entry);
-            if (hist.length > MAX_HISTORY) hist.splice(0, hist.length - MAX_HISTORY);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
-        } catch (e) { console.warn('localStorage save failed:', e); }
-    }
-
-    function loadSessionHistory() {
-        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-        catch (e) { return []; }
-    }
-
-    // ===== Chart instances =====
-    let radarChartInstance = null;
-    let radarChartOverviewInstance = null;
-    let lineChartInstance = null;
-
-    function renderRadarChart(sixScores) {
-        const canvas = document.getElementById('radar-chart');
-        if (!canvas || typeof Chart === 'undefined') return;
-        if (radarChartInstance) { radarChartInstance.destroy(); radarChartInstance = null; }
-        const vals = [
-            parseFloat(((sixScores.bond      || 1) / 7  * 10).toFixed(1)),
-            parseFloat(((sixScores.task      || 1) / 7  * 10).toFixed(1)),
-            parseFloat(((sixScores.goal      || 1) / 7  * 10).toFixed(1)),
-            parseFloat((sixScores.empathy    || 5).toFixed(1)),
-            parseFloat((sixScores.listening  || 5).toFixed(1)),
-            parseFloat((sixScores.ethics     || 7).toFixed(1))
-        ];
-        radarChartInstance = new Chart(canvas, {
-            type: 'radar',
-            data: {
-                labels: ['Bond', 'Task', 'Goal', 'Empathy', 'Listening', 'Ethics'],
-                datasets: [{ label: 'This Session', data: vals,
-                    backgroundColor: 'rgba(91,127,255,0.18)', borderColor: '#5b7fff',
-                    borderWidth: 2, pointBackgroundColor: '#5b7fff', pointRadius: 4 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { r: { min: 0, max: 10,
-                    ticks: { stepSize: 2, font: { size: 10 } },
-                    pointLabels: { font: { size: 12, weight: 'bold' } },
-                    grid: { color: 'rgba(0,0,0,0.08)' } } },
-                plugins: { legend: { display: false } }
-            }
-        });
-    }
-
-    function renderRadarChartOverview(sixScores) {
-        const canvas = document.getElementById('radar-chart-overview');
-        if (!canvas || typeof Chart === 'undefined') return;
-        if (radarChartOverviewInstance) { radarChartOverviewInstance.destroy(); radarChartOverviewInstance = null; }
-        const vals = [
-            parseFloat(((sixScores.bond      || 1) / 7  * 10).toFixed(1)),
-            parseFloat(((sixScores.task      || 1) / 7  * 10).toFixed(1)),
-            parseFloat(((sixScores.goal      || 1) / 7  * 10).toFixed(1)),
-            parseFloat((sixScores.empathy    || 5).toFixed(1)),
-            parseFloat((sixScores.listening  || 5).toFixed(1)),
-            parseFloat((sixScores.ethics     || 7).toFixed(1))
-        ];
-        radarChartOverviewInstance = new Chart(canvas, {
-            type: 'radar',
-            data: {
-                labels: ['Bond', 'Task', 'Goal', 'Empathy', 'Listening', 'Ethics'],
-                datasets: [{ label: 'Score', data: vals,
-                    backgroundColor: 'rgba(91,127,255,0.18)', borderColor: '#5b7fff',
-                    borderWidth: 2, pointBackgroundColor: '#5b7fff', pointRadius: 4 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { r: { min: 0, max: 10,
-                    ticks: { stepSize: 2, font: { size: 9 } },
-                    pointLabels: { font: { size: 11, weight: 'bold' } },
-                    grid: { color: 'rgba(0,0,0,0.08)' } } },
-                plugins: { legend: { display: false } }
-            }
-        });
-    }
-
-    function renderLineChart(history) {
-        const canvas = document.getElementById('line-chart');
-        const emptyMsg = document.getElementById('history-empty');
-        if (!canvas || typeof Chart === 'undefined') return;
-        if (lineChartInstance) { lineChartInstance.destroy(); lineChartInstance = null; }
-        if (!history || history.length < 2) {
-            canvas.style.display = 'none';
-            if (emptyMsg) emptyMsg.style.display = 'block';
-            return;
-        }
-        canvas.style.display = 'block';
-        if (emptyMsg) emptyMsg.style.display = 'none';
-        const labels = history.map(function(h, i) { return h.date || ('Session ' + (i + 1)); });
-        function mk(key, scale) {
-            return history.map(function(h) { return parseFloat(((h[key] || 1) / scale * 10).toFixed(1)); });
-        }
-        lineChartInstance = new Chart(canvas, {
-            type: 'line',
-            data: { labels: labels, datasets: [
-                { label: 'Bond',      data: mk('bond', 7),       borderColor: '#5b7fff', tension: 0.3, fill: false, pointRadius: 4 },
-                { label: 'Task',      data: mk('task', 7),       borderColor: '#8b5cf6', tension: 0.3, fill: false, pointRadius: 4 },
-                { label: 'Goal',      data: mk('goal', 7),       borderColor: '#06b6d4', tension: 0.3, fill: false, pointRadius: 4 },
-                { label: 'Empathy',   data: mk('empathy', 10),   borderColor: '#10b981', tension: 0.3, fill: false, pointRadius: 4 },
-                { label: 'Listening', data: mk('listening', 10), borderColor: '#f59e0b', tension: 0.3, fill: false, pointRadius: 4 },
-                { label: 'Ethics',    data: mk('ethics', 10),    borderColor: '#ef4444', tension: 0.3, fill: false, pointRadius: 4 }
-            ]},
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    y: { min: 0, max: 10, ticks: { stepSize: 2 }, title: { display: true, text: 'Score (0-10)' } },
-                    x: { ticks: { maxRotation: 30, font: { size: 11 } } }
-                },
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-            }
-        });
-    }
-
+    
+    // 显示报告弹窗 - 修复版
     function showReportModal(reportData) {
         const modal = document.getElementById('report-modal');
-        if (!modal) return;
-        document.querySelectorAll('.report-tab-btn').forEach(function(b) { b.classList.remove('active'); });
-        document.querySelectorAll('.report-tab-content').forEach(function(c) { c.classList.remove('active'); });
-        var firstTabBtn = document.querySelector('.report-tab-btn[data-tab="overview"]');
-        var firstTabEl  = document.getElementById('tab-overview');
-        if (firstTabBtn) firstTabBtn.classList.add('active');
-        if (firstTabEl)  firstTabEl.classList.add('active');
-        const basicInfo     = document.getElementById('report-basic-info');
-        const keyInsights   = document.getElementById('report-key-insights');
-        const advice        = document.getElementById('report-advice');
-        const ethical       = document.getElementById('report-ethical');
+        if (!modal) {
+            console.error('报告弹窗元素未找到');
+            return;
+        }
+        
+        const basicInfo = document.getElementById('report-basic-info');
+        const keyInsights = document.getElementById('report-key-insights');
+        const advice = document.getElementById('report-advice');
+        const ethical = document.getElementById('report-ethical');
         const ethicalSection = document.getElementById('ethical-section');
-        const overallText   = document.getElementById('overall-assessment-text');
-        const wai       = reportData.wai_assessment || {};
-        const waiScores = wai.wai_scores || {};
-        const waiPct    = wai.wai_percentage || 'N/A';
-        if (basicInfo) {
-            const waiHTML = waiScores.bond !== undefined ?
-                '<div class="wai-scores"><p><strong>WAI Working Alliance</strong></p>' +
-                '<p>Bond: <strong>' + (+waiScores.bond).toFixed(2) + '</strong>/7' +
-                ' &nbsp; Task: <strong>' + (+waiScores.task).toFixed(2) + '</strong>/7' +
-                ' &nbsp; Goal: <strong>' + (+waiScores.goal).toFixed(2) + '</strong>/7</p>' +
-                '<p><strong>Total: ' + (wai.wai_total || 'N/A') + ' pts (' + waiPct + '%)</strong></p></div>' : '';
-            basicInfo.innerHTML =
-                '<p><strong>Client:</strong> '           + (reportData.client_name || 'N/A')                    + '</p>' +
-                '<p><strong>Issue:</strong> '            + (reportData.client_issue || 'N/A')                   + '</p>' +
-                '<p><strong>Date:</strong> '             + (reportData.conversation_date || new Date().toLocaleString()) + '</p>' +
-                '<p><strong>Turns completed:</strong> '  + (reportData.total_turns || 0)                        + '</p>' + waiHTML;
+        
+        // 清空之前的内容
+        if (basicInfo) basicInfo.innerHTML = '';
+        if (keyInsights) keyInsights.innerHTML = '';
+        if (advice) advice.innerHTML = '';
+        if (ethical) ethical.innerHTML = '';
+        
+        // 填充基本信息
+        let basicHTML = `
+            <p><strong>来访者:</strong> ${reportData.client_name || '未指定'}</p>
+            <p><strong>主要问题:</strong> ${reportData.client_issue || '未指定问题'}</p>
+            <p><strong>对话时间:</strong> ${reportData.conversation_date || new Date().toLocaleString('zh-CN')}</p>
+            <p><strong>对话轮次:</strong> ${reportData.total_turns || 0} 轮</p>
+            <p><strong>预计用时:</strong> ${reportData.estimated_time || '0 分钟'}</p>
+        `;
+        
+        // 如果有WAI评估，显示WAI评分
+        if (reportData.wai_assessment) {
+            const wai = reportData.wai_assessment;
+            const scores = wai.wai_scores || {};
+            
+            basicHTML += `
+                <div class="wai-scores">
+                    <p><strong>WAI工作联盟评分:</strong></p>
+                    <p>情感联结: ${scores.bond || 'N/A'}/7</p>
+                    <p>任务合作: ${scores.task || 'N/A'}/7</p>
+                    <p>目标一致: ${scores.goal || 'N/A'}/7</p>
+                    <p><strong>总分:</strong> ${wai.wai_total || 'N/A'}/21 (${wai.wai_percentage || 'N/A'}%)</p>
+                </div>
+            `;
         }
+        
+        if (basicInfo) basicInfo.innerHTML = basicHTML;
+        
+        // 填充关键洞察
         if (keyInsights) {
-            keyInsights.innerHTML = '';
-            (reportData.key_insights || wai.strengths || []).forEach(function(s) {
-                const li = document.createElement('li'); li.textContent = s; keyInsights.appendChild(li);
+            const insights = reportData.key_insights || [];
+            insights.forEach(insight => {
+                const li = document.createElement('li');
+                li.textContent = insight;
+                keyInsights.appendChild(li);
             });
         }
+        
+        // 填充专业建议
         if (advice) {
-            advice.innerHTML = '';
-            (reportData.professional_advice || wai.suggestions || []).forEach(function(s) {
-                const li = document.createElement('li'); li.textContent = s; advice.appendChild(li);
+            const suggestions = reportData.professional_advice || [];
+            suggestions.forEach(adv => {
+                const li = document.createElement('li');
+                li.textContent = adv;
+                advice.appendChild(li);
             });
         }
+        
+        // 填充伦理注意事项
         if (ethicalSection && ethical) {
             const violations = reportData.ethical_violations || [];
-            ethicalSection.style.display = violations.length > 0 ? 'block' : 'none';
-            ethical.innerHTML = '';
-            violations.forEach(function(v) { const li = document.createElement('li'); li.textContent = v; ethical.appendChild(li); });
+            if (violations.length > 0) {
+                ethicalSection.style.display = 'block';
+                violations.forEach(violation => {
+                    const li = document.createElement('li');
+                    li.textContent = violation;
+                    ethical.appendChild(li);
+                });
+            } else {
+                ethicalSection.style.display = 'none';
+            }
         }
-        if (overallText) { overallText.textContent = wai.overall_assessment || ''; }
-        const skillScores = wai.skill_scores || {};
-        const sixScores = {
-            bond:      waiScores.bond      || 4,
-            task:      waiScores.task      || 4,
-            goal:      waiScores.goal      || 4,
-            empathy:   skillScores.empathy   || 5,
-            listening: skillScores.listening || 5,
-            ethics:    skillScores.ethics    || 7
-        };
-        const skillDetails = document.getElementById('skill-details');
-        if (skillDetails) {
-            const dims = [
-                { key: 'bond',      label: 'Bond (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).bond      || '' },
-                { key: 'task',      label: 'Task (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).task      || '' },
-                { key: 'goal',      label: 'Goal (WAI)',       scale: 7,  comment: (wai.dimension_comments || {}).goal      || '' },
-                { key: 'empathy',   label: 'Empathy',          scale: 10, comment: skillScores.empathy_comment   || '' },
-                { key: 'listening', label: 'Active Listening', scale: 10, comment: skillScores.listening_comment || '' },
-                { key: 'ethics',    label: 'Ethics',           scale: 10, comment: skillScores.ethics_comment    || '' }
-            ];
-            skillDetails.innerHTML = dims.map(function(d) {
-                const raw = sixScores[d.key];
-                const pct = Math.round((raw / d.scale) * 100);
-                return '<div class="skill-detail-item">' +
-                    '<div class="skill-header">' +
-                    '<span class="skill-name">' + d.label + '</span>' +
-                    '<span class="skill-score">' + (raw.toFixed ? raw.toFixed(2) : raw) + '/' + d.scale + '</span>' +
-                    '</div>' +
-                    '<div class="skill-bar"><div class="skill-bar-fill" style="width:' + pct + '%"></div></div>' +
-                    (d.comment ? '<div class="skill-comment">' + d.comment + '</div>' : '') +
-                    '</div>';
-            }).join('');
-        }
-        const histEntry = { date: new Date().toLocaleDateString(),
-            bond: sixScores.bond, task: sixScores.task, goal: sixScores.goal,
-            empathy: sixScores.empathy, listening: sixScores.listening, ethics: sixScores.ethics };
-        saveSessionToHistory(histEntry);
-        const history = loadSessionHistory();
-        document.querySelectorAll('.report-tab-btn').forEach(function(btn) {
-            btn.onclick = function() {
-                document.querySelectorAll('.report-tab-btn').forEach(function(b) { b.classList.remove('active'); });
-                document.querySelectorAll('.report-tab-content').forEach(function(c) { c.classList.remove('active'); });
-                btn.classList.add('active');
-                const t = document.getElementById('tab-' + btn.dataset.tab);
-                if (t) t.classList.add('active');
-                if (btn.dataset.tab === 'skills')  setTimeout(function() { renderRadarChart(sixScores); }, 50);
-                if (btn.dataset.tab === 'history') setTimeout(function() { renderLineChart(history); }, 50);
-            };
-        });
-        const clearBtn = document.getElementById('clear-history-btn');
-        if (clearBtn) {
-            clearBtn.onclick = function() {
-                if (confirm('Clear all session history?')) {
-                    localStorage.removeItem(HISTORY_KEY);
-                    renderLineChart([]);
-                    showToast('History cleared', 'info');
-                }
-            };
-        }
+        
+        // 显示弹窗
         modal.style.display = 'block';
-        setTimeout(function() { renderRadarChartOverview(sixScores); }, 80);
     }
-
+    
+    // ============ 其他功能函数 ============
+    
     // 导出对话功能
     function exportConversation() {
         try {
             const messages = chatBox.querySelectorAll('.message');
-            let conversationText = 'Psychological Counseling Session Record\n';
-            conversationText += 'Client: ' + document.querySelector('.chat-header h2').textContent + '\n';
-            conversationText += 'Export Time: ' + new Date().toLocaleString() + '\n';
+            let conversationText = `心理咨询对话记录\n`;
+            conversationText += `来访者: ${document.querySelector('.chat-header h2').textContent}\n`;
+            conversationText += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
             conversationText += '='.repeat(50) + '\n\n';
-            messages.forEach(function(message, index) {
-                const role = message.classList.contains('ai') ? 'AI Client' : 'Counselor';
+            
+            messages.forEach((message, index) => {
+                const role = message.classList.contains('ai') ? 'AI来访者' : '咨询师';
                 const content = message.querySelector('.content').textContent;
-                conversationText += (index + 1) + '. [' + role + ']: ' + content + '\n\n';
+                conversationText += `${index + 1}. [${role}]: ${content}\n\n`;
             });
+            
+            // 创建下载链接
             const blob = new Blob([conversationText], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             const clientName = document.querySelector('.chat-header h2').textContent.split(' ')[0];
             const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             a.href = url;
-            a.download = clientName + '_session_record_' + timestamp + '.txt';
+            a.download = `${clientName}_对话记录_${timestamp}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showToast('Conversation exported successfully!', 'success');
+            
+            showToast('对话导出成功！', 'success');
         } catch (error) {
-            console.error('Export conversation failed:', error);
-            showToast('Export failed, please try again', 'error');
+            console.error('导出对话失败:', error);
+            showToast('导出失败，请重试', 'error');
         }
-    }    async function exportReport() {
+    }
+    
+    // 导出报告功能
+    async function exportReport() {
         try {
             const response = await fetch('/api/export-report');
             
             if (!response.ok) {
-                throw new Error('Export failed');
+                throw new Error('导出报告失败');
             }
             
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `counseling_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+            a.download = `咨询报告_${new Date().toISOString().slice(0, 10)}.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             
-            showToast('Report exported successfully!', 'success');
+            showToast('报告导出成功！', 'success');
         } catch (error) {
-            showToast(`Export failed: ${error.message}`, 'error');
+            showToast(`导出失败: ${error.message}`, 'error');
             console.error('导出报告错误:', error);
         }
     }
@@ -536,10 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const clientId = document.querySelector('.chat-header h2').textContent.split(' ')[0];
             const response = await fetch(`/start-session/${clientId}?_=${Date.now()}`);
-            if (!response.ok) throw new Error('Session reset failed');
+            if (!response.ok) throw new Error('会话重置失败');
             location.reload();
         } catch (error) {
-            showToast(`Session error: ${error.message}`, 'error');
+            showToast(`会话错误: ${error.message}`, 'error');
         }
     }
     
@@ -572,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (turnCounter) {
                 const [current, max] = turnCounter.textContent.split('/').map(Number);
                 if (current >= max) {
-                    showToast('Maximum exam turns reached; further messages cannot be sent', 'error');
+                    showToast('已达到考试最大对话轮次，无法继续发送消息', 'error');
                     return;
                 }
             }
@@ -589,12 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show loading indicator
         const loadingElement = showLoadingIndicator();
         
-        const controller = new AbortController();
-        const fetchTimeout = setTimeout(() => controller.abort(), 55000);
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                signal: controller.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Session-Check': 'true',
@@ -611,23 +470,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.status === 400) {
                 const error = await response.json();
                 console.log('API错误详情:', error);
-                if (error.error === "Session not initialized") {
-                    showToast('Session expired, reconnecting...', 'info');
+                if (error.error === "会话未初始化") {
+                    showToast('会话已过期，正在重新连接...', 'info');
                     await restartSession();
                     return;
                 }
-                throw new Error(error.error || 'Request failed: ' + response.status);
-            }
-            
-            if (response.status === 503) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || 'AI service unavailable. Please check API key configuration.');
+                throw new Error(error.error || '请求失败: ' + response.status);
             }
             
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('API响应文本:', errorText);
-                throw new Error('Request failed: ' + response.status);
+                throw new Error('请求失败: ' + response.status);
             }
             
             const data = await response.json();
@@ -642,33 +496,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.reply) {
                 addMessage('ai', data.reply);
             } else {
-                throw new Error('No response received');
+                throw new Error('没有收到回复');
             }
             
         } catch (error) {
             hideLoadingIndicator(loadingElement);
-            console.error('Complete error info:', error);
+            console.error('完整的错误信息:', error);
             
-            if (error.name === 'AbortError') {
-                showToast('Request timed out. Please try again.', 'error');
-                addMessage('ai', 'Sorry, the response timed out. Please try again.');
-            } else if (error.message.includes("Session") || error.message.includes("initialized")) {
-                showToast('Restoring session...', 'info');
+            if (error.message.includes("会话") || error.message.includes("初始化")) {
+                showToast('正在恢复会话...', 'info');
                 await restartSession();
             } else {
-                const errorMsg = error.message || 'Unknown error';
-                showToast(`Send failed: ${errorMsg}`, 'error');
-                addMessage('ai', 'Sorry, I am temporarily unable to process your request. Please try again.');
+                const errorMsg = error.message || '未知错误';
+                showToast(`发送失败: ${errorMsg}`, 'error');
+                addMessage('ai', '抱歉，我暂时无法处理您的请求。请重试。');
             }
         } finally {
-            clearTimeout(fetchTimeout);
             sendBtn.disabled = false;
             userInput.focus();
         }
     }
     
-    // ============ Page Initialization ============
+    // ============ 页面初始化 ============
     
+    // 确保结束按钮存在
     function ensureEndButton() {
         const headerButtons = document.querySelector('.header-buttons');
         if (!headerButtons) return;
@@ -681,12 +532,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.createElement('button');
         btn.id = 'end-session-btn';
         btn.className = 'btn btn-primary';
-        btn.innerHTML = '<span style="margin-right: 5px;">📋</span> End & Generate WAI Assessment';
+        btn.innerHTML = '<span style="margin-right: 5px;">📋</span>结束并生成WAI评估';
         btn.style.marginLeft = '8px';
         headerButtons.appendChild(btn);
 
         btn.addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to end this session and generate a WAI assessment report?')) return;
+            if (!confirm('确定结束当前会话并生成WAI评估报告吗？')) return;
             await endSession();
         });
     }

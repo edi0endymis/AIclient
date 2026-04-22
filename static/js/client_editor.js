@@ -36,15 +36,15 @@ document.getElementById('edit-client-form').addEventListener('submit', async (e)
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Save failed');
+            throw new Error(error.error || '更新失败');
         }
         
-        showToast('Client information updated!', 'success');
+        showToast('来访者信息已更新！', 'success');
         setTimeout(() => {
             window.location.href = '/select-client';
         }, 1500);
     } catch (error) {
-        showToast('Save failed: ' + (error.error || 'Unknown error'), 'error');
+        showToast(error.message, 'error');
         console.error('Error:', error);
     }
 });

@@ -73,11 +73,16 @@
 .modal-report {
     max-width: 780px;
     width: 92vw;
+    height: 88vh;
     max-height: 88vh;
     display: flex;
     flex-direction: column;
     padding: 0;
     overflow: hidden;
+}
+#report-modal {
+    align-items: center;
+    justify-content: center;
 }
 .modal-report .modal-header {
     padding: 16px 20px;
@@ -92,6 +97,7 @@
 .modal-report .modal-body {
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
     padding: 20px 24px;
 }
 /* Overall score ring */
@@ -137,15 +143,27 @@
 .skill-score-num { font-size: 12px; font-weight: 600; width: 34px; text-align: right; flex-shrink: 0; }
 .skill-status { font-size: 13px; width: 18px; flex-shrink: 0; }
 /* WAI */
+.wai-total-strip {
+    display: flex; align-items: center; gap: 10px;
+    background: #f0f4ff; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
+}
+.wai-total-label { font-size: 12px; color: #555; width: 140px; flex-shrink: 0; }
+.wai-total-bar-bg { flex: 1; height: 8px; background: #dde4ff; border-radius: 4px; overflow: hidden; }
+.wai-total-bar { height: 100%; background: linear-gradient(90deg, #5b7fff, #2d9e5a); border-radius: 4px; transition: width 0.9s ease; }
+.wai-total-num { font-size: 16px; font-weight: 700; color: #2d4bcc; width: 52px; text-align: right; flex-shrink: 0; }
 .wai-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
 .wai-dim {
     background: #f8f9ff; border-radius: 10px; padding: 12px 14px;
     border-left: 3px solid #5b7fff;
 }
-.wai-dim-name { font-size: 11px; color: #888; margin-bottom: 4px; }
-.wai-dim-score { font-size: 22px; font-weight: 700; color: #2d4bcc; }
+.wai-dim-name { font-size: 11px; color: #888; margin-bottom: 2px; }
+.wai-dim-score-row { display: flex; align-items: baseline; gap: 4px; margin: 4px 0 5px; }
+.wai-dim-score { font-size: 24px; font-weight: 700; color: #2d4bcc; line-height: 1; }
 .wai-dim-max { font-size: 11px; color: #aaa; }
-.wai-dim-note { font-size: 11px; color: #666; margin-top: 4px; line-height: 1.4; }
+.wai-dim-level { font-size: 11px; font-weight: 600; margin-left: auto; }
+.wai-bar-bg { height: 5px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.wai-bar-fill { height: 100%; border-radius: 3px; transition: width 0.9s ease; }
+.wai-dim-rationale { font-size: 12px; color: #444; line-height: 1.55; margin-top: 2px; }
 /* Weakness analysis cards */
 .weakness-card {
     border: 1px solid #f0e8ff; border-radius: 10px;
