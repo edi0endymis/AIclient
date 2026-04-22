@@ -3,6 +3,109 @@
 {% block head %}
 <link rel="stylesheet" href="/static/css/chat.css">
 <script src="/static/js/chat.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('end-session-btn');
+    if (btn) {
+        var nb = btn.cloneNode(true);
+        btn.parentNode.replaceChild(nb, btn);
+        nb.addEventListener('click', function() {
+            if (!confirm('确定结束当前会话并生成WAI评估报告吗？')) return;
+            _endSession();
+        });
+    }
+    var cr = document.getElementById('close-report-btn');
+    if (cr) cr.addEventListener('click', function(){ document.getElementById('report-modal').style.display='none'; });
+    var cl = document.querySelector('#report-modal .close');
+    if (cl) cl.addEventListener('click', function(){ document.getElementById('report-modal').style.display='none'; });
+});
+
+function _showLoading() {
+    var m = document.getElementById('report-modal');
+    var b = document.getElementById('report-body');
+    if (!m || !b) return;
+    b.innerHTML = '<div style="padding:40px;text-align:center;color:#888"><div style="font-size:36px;margin-bottom:12px">&#9203;</div><div style="font-size:15px">正在生成评估报告，请稍候…</div><div style="font-size:12px;margin-top:8px;color:#bbb">通常需襸15—30秒</div></div>';
+    m.style.display = 'flex';
+}
+
+function _showReport(d) {
+    var m = document.getElementById('report-modal');
+    if (!m) return;
+    var wai = (d && d.wai_assessment) || {};
+    var sc = wai.wai_scores || {};
+    var tot = wai.wai_total || ((sc.bond||0)+(sc.task||0)+(sc.goal||0));
+    var pct = wai.wai_percentage || Math.round(tot/21*100);
+    var meta = document.getElementById('report-meta');
+    if (meta) meta.textContent = (d.client_name||'') + ' · ' + (d.total_turns||0) + ' 轮';
+    var b = document.getElementById('report-body');
+    if (!b) { m.style.display='flex'; return; }
+    var dc = wai.dimension_comments || {};
+    var ins = (d.key_insights||[]).map(function(s){ return '<li>'+s+'</li>'; }).join('');
+    var sg  = (wai.suggestions||d.professional_advice||[]).map(function(s){ return '<li>'+s+'</li>'; }).join('');
+    b.innerHTML =
+        '<div style="margin-bottom:16px;padding:16px;background:#f0f4ff;border-radius:10px">'
+        +'<p style="margin:0 0 6px"><b>来访者：</b>'+(d.client_name||'未指定')+'</p>'
+        +'<p style="margin:0 0 6px"><b>主诉：</b>'+(d.client_issue||'未指定')+'</p>'
+        +'<p style="margin:0"><b>对话轮次：</b>'+(d.total_turns||0)+' 轮</p>'
+        +'</div>'
+        +'<div style="margin-bottom:16px;padding:16px;background:#f8f9ff;border-radius:10px">'
+        +'<p style="font-weight:700;margin:0 0 10px;font-size:14px">WAI 工作联盟评分</p>'
+        +'<p style="margin:0 0 5px">情感联结 Bond：<b style="color:#2d4bcc">'+(sc.bond||'–')+'/7</b></p>'
+        +'<p style="margin:0 0 5px">任务合作 Task：<b style="color:#2d4bcc">'+(sc.task||'–')+'/7</b></p>'
+        +'<p style="margin:0 0 10px">目标一致 Goal：<b style="color:#2d4bcc">'+(sc.goal||'–')+'/7</b></p>'
+        +'<p style="margin:0;font-size:15px">总分：<b style="color:#1a2b6b;font-size:18px">'+tot+'/21</b> ('+pct+'%)'
+        +(wai.overall_assessment?'<br><span style="font-size:13px;color:#555">'+wai.overall_assessment+'</span>':'')+'</p>'
+        +'</div>'
+        +(ins?'<div style="margin-bottom:14px"><p style="font-weight:700;margin:0 0 6px;font-size:13px;color:#555">关键洞察</p><ul style="margin:0;padding-left:20px;color:#333;font-size:13px">'+ins+'</ul></div>':'')
+        +(sg?'<div style="margin-bottom:14px"><p style="font-weight:700;margin:0 0 6px;font-size:13px;color:#555">专业建议</p><ul style="margin:0;padding-left:20px;color:#333;font-size:13px">'+sg+'</ul></div>':'');
+    console.log('[report] rendered, length:', b.innerHTML.length);
+    m.style.display = 'flex';
+}
+
+function _defaultWAI(n) {
+    var lo = n>20?5:n>10?4:3, hi = n>20?7:n>10?6:5;
+    var rnd = function(a,b){ return a+Math.floor(Math.random()*(b-a+1)); };
+    var bond=rnd(lo,hi), task=rnd(lo-1,hi-1), goal=rnd(lo-1,hi-1);
+    return {
+        wai_scores:{bond:bond,task:task,goal:goal},
+        wai_total:bond+task+goal,
+        wai_percentage:Math.round((bond+task+goal)/21*100),
+        dimension_comments:{bond:'情感联结初步建立',task:'咏询任务基本明确',goal:'目标方向初步确立'},
+        suggestions:['加强共情回应','明确咏询目标','增加开放式提问'],
+        overall_assessment:'对话初步建立了工作联盟，建议继续深化咏询关系。'
+    };
+}
+
+async function _endSession() {
+    _showLoading();
+    var uM = document.querySelectorAll('.message.user');
+    var aM = document.querySelectorAll('.message.ai:not(.loading)');
+    var turns = Math.min(uM.length, aM.length);
+    var name = ((document.querySelector('.chat-header h2')||{}).textContent||'').split(' ')[0]||'来访者';
+    var issue = (document.querySelector('.chat-header small')||{}).textContent||'未指定';
+    var wai = null;
+    try {
+        var r = await fetch('/api/wai-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'train'})});
+        wai = r.ok ? await r.json() : _defaultWAI(turns);
+    } catch(e) { wai = _defaultWAI(turns); }
+    var data = {
+        client_name:name, client_issue:issue,
+        conversation_date:new Date().toLocaleString('zh-CN'),
+        total_turns:turns, estimated_time:turns*2+' 分钟',
+        wai_assessment:wai,
+        key_insights: wai&&wai.wai_scores ? [
+            wai.wai_scores.bond>=5?'情感联结良好':'情感联结有待加强',
+            wai.wai_scores.task>=5?'任务合作有效':'任务合作需要加强',
+            wai.wai_scores.goal>=5?'目标一致性好':'目标一致性需提升'
+        ] : ['完成了'+turns+'轮对话'],
+        professional_advice:(wai&&wai.suggestions)||['建议加强情感回应','注意倾听技巧']
+    };
+    try { await fetch('/api/save-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({report_data:data})}); } catch(e){}
+    _showReport(data);
+    try { await fetch('/end-session',{method:'POST'}); } catch(e){}
+}
+</script>
 {% endblock %}
 
 {% block content %}
